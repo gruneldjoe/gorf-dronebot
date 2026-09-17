@@ -83,6 +83,8 @@ The *feeling* of a SNES game, translated, not literal pixels:
   background as well as the robot.
 - 2026-09-17 — Repo `gruneldjoe/gorf-dronebot` created (private). Spec-first
   workflow: requirements and decisions tracked here.
+- 2026-09-17 — Demo mode: 4 fixed generated chiptune/glitch tracks bundled
+  in `assets/demo/` (fixtures, generated once). Requested by Dan.
 
 ## 8. Requirements
 
@@ -95,6 +97,8 @@ The *feeling* of a SNES game, translated, not literal pixels:
 - R5. Record mode exports a video clip usable for socials.
 - R6. SNES vibe checklist: mode-7 floor, parallax layers, giant sun/moon,
   limited palette, silhouette composition — all present in v1.
+- R7. Demo mode: 4 bundled tracks selectable in-app, routed through the same
+  FFT analysis path as live input. Works with no mic/line-in.
 
 ## 9. Open questions
 
@@ -103,3 +107,19 @@ The *feeling* of a SNES game, translated, not literal pixels:
 - Q3. Which track(s) should we design the timing against first?
 - Q4. Palette: lean harder into orange/magenta fire, or bring in the cyan
   accents more aggressively?
+
+## 10. Demo mode
+
+No live audio required to test. Four fixed synthy tracks ship in
+`assets/demo/` (OGG Vorbis), generated once by `tools/gen_demo_tracks.py`
+(deterministic — same seed, same output) and committed as fixtures. They
+never change per run:
+
+- **demo-01-overworld-run** — 140 BPM cheerful chiptune, C major (28s)
+- **demo-02-boss-protocol** — 160 BPM aggressive boss theme, A minor (25s)
+- **demo-03-glitch-machine** — 128 BPM glitch chip, bitcrushed + stuttered (31s)
+- **demo-04-title-screen** — 92 BPM dreamy pads and sparse lead (43s)
+
+The app offers a track selector that feeds the chosen file straight into the
+same FFT analysis path as live input, so demo mode exercises the real
+reactivity chain. See `assets/demo/README.md`.
