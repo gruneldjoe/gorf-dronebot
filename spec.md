@@ -117,6 +117,8 @@ The *feeling* of a SNES game, translated, not literal pixels:
   limited palette, silhouette composition — all present in v1.
 - R7. Demo mode: 4 bundled tracks selectable in-app, routed through the same
   FFT analysis path as live input. Works with no mic/line-in.
+- R8. Turntable toggle: a HUD button (plus keyboard shortcut) to turn the
+  robot's turntable rotation on/off. Default on.
 
 ## 9. Open questions (resolved 2026-09-17)
 

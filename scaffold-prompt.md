@@ -348,7 +348,7 @@ video and the track's audio in sync.
 
 **Build:**
 - `Space` = manual eruption, `C` = CRT toggle, `H` = HUD, `F` = fullscreen,
-  `1–4` = demo tracks, `M` = MIDI learn.
+  `1–4` = demo tracks, `M` = MIDI learn, `T` = turntable spin on/off (R8).
 - Help overlay listing them, SNES-manual styling.
 
 **Done when:** All shortcuts work from the visualizer; help overlay is
@@ -394,6 +394,9 @@ and `demo-04-title-screen.ogg` stays dreamy — the visualizer clearly
   folder — no build step means this should just work; verify.
 - Muse artifact: package the static app as an artifact so Dan can run and
   view it right in the chat environment.
+- **Final step: open it for Dan.** Present the artifact so it opens in the
+  sidebar — he should be able to press START and watch it burn without
+  leaving the conversation.
 - Final commit, everything tidy.
 
 **Done when:** Fresh clone → `npx serve` → title screen → demo track →
