@@ -36,7 +36,11 @@ The *feeling* of a SNES game, translated, not literal pixels:
 ## 3. The robot
 
 - Humanoid mech silhouette, built from a sampled point cloud + wireframe
-  edges. Chunky dramatic proportions (big shoulders, heavy legs).
+  edges. Gundam-chunky proportions (big shoulders, heavy legs, blocky
+  torso), IG-88-inspired styling: cylindrical sensor head with a glowing
+  band, twin photoreceptor eyes.
+- Body kept very dark/desaturated gunmetal so the fire reads hard against
+  it. The effect must always be clearly visible against the bot's colors.
 - **Beat cycle:** kick transient → snap to coherent + shockwave ring on the
   floor + camera punch. Between beats → decay into embers. Drop → violent
   full shatter, then reform bigger.
@@ -85,6 +89,19 @@ The *feeling* of a SNES game, translated, not literal pixels:
   workflow: requirements and decisions tracked here.
 - 2026-09-17 — Demo mode: 4 fixed generated chiptune/glitch tracks bundled
   in `assets/demo/` (fixtures, generated once). Requested by Dan.
+- 2026-09-17 — MVP = live playback: title screen → demo track or live input
+  → real-time reactive visualizer. Post-MVP, in order: rendered clip export
+  for socials, then DDJ performance visuals. (Dan)
+- 2026-09-17 — Robot style: Gundam-chunky body, IG-88-inspired detailing
+  (cylindrical sensor head, twin photoreceptor eyes); body stays dark so the
+  fire reads hard against it. (Dan)
+- 2026-09-17 — Timing reference: the 4 demo tracks. Personal track library
+  (Dan's own music) is post-MVP. (Dan)
+- 2026-09-17 — Palette call (Samantha): near-black gunmetal bot,
+  white-orange-magenta fire, cyan reserved for wireframe accents / eyes /
+  verse sections. Color tweak pass tracked as a post-MVP item.
+- 2026-09-17 — Ship both: Muse artifact (Dan runs/views it right here) and
+  GitHub Pages. (Dan)
 
 ## 8. Requirements
 
@@ -93,20 +110,24 @@ The *feeling* of a SNES game, translated, not literal pixels:
 - R2. Beat-coherent reform: the snap-back must land on the kick transient,
   not drift.
 - R3. Three inputs at minimum: audio file, mic, line-in.
-- R4. MIDI learn for at least 4 manual triggers.
-- R5. Record mode exports a video clip usable for socials.
+- R4. (Post-MVP — DDJ visuals) MIDI learn for at least 4 manual triggers.
+- R5. (Post-MVP — clip export) Record mode exports a video clip usable for
+  socials.
 - R6. SNES vibe checklist: mode-7 floor, parallax layers, giant sun/moon,
   limited palette, silhouette composition — all present in v1.
 - R7. Demo mode: 4 bundled tracks selectable in-app, routed through the same
   FFT analysis path as live input. Works with no mic/line-in.
 
-## 9. Open questions
+## 9. Open questions (resolved 2026-09-17)
 
-- Q1. Priority: live DJ visuals, rendered social clips, or both equally?
-- Q2. Robot silhouette details — any reference mechs / characters?
-- Q3. Which track(s) should we design the timing against first?
-- Q4. Palette: lean harder into orange/magenta fire, or bring in the cyan
-  accents more aggressively?
+- Q1. Priority → MVP is live playback; post-MVP, in order: rendered clips
+  for socials, then DDJ performance visuals.
+- Q2. Robot silhouette → Gundam-chunky body, IG-88-inspired styling; body
+  stays dark so the fire pops against it.
+- Q3. Timing reference → the 4 demo tracks; Dan's own tracks become a
+  post-MVP personal library.
+- Q4. Palette → Samantha's call (see decisions log); color tweak pass
+  tracked as a post-MVP item.
 
 ## 10. Demo mode
 
@@ -123,3 +144,16 @@ never change per run:
 The app offers a track selector that feeds the chosen file straight into the
 same FFT analysis path as live input, so demo mode exercises the real
 reactivity chain. See `assets/demo/README.md`.
+
+## 11. MVP scope
+
+v1 = live playback. Title screen → pick a demo track or a live input →
+real-time reactive visualizer at 60fps. In scope: R1, R2, R3, R6, R7.
+Out of scope until post-MVP: R4 (DDJ visuals), R5 (clip export).
+
+## 12. Post-MVP / future enhancements
+
+- Rendered clip export for socials (record mode → downloadable video).
+- DDJ performance visuals (MIDI learn + triggers from the DDJ-FLX10).
+- Personal track library (Dan's own music, organized in-app).
+- Color grading controls / tweak pass.

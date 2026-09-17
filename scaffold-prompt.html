@@ -1,0 +1,305 @@
+<style>
+.sp-doc{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:14px;line-height:1.6;color:var(--hatch-widget-text);max-width:100%;box-sizing:border-box;padding:4px 2px}
+.sp-doc h1{font-size:20px;margin:0 0 12px;color:var(--hatch-widget-text);border-bottom:2px solid var(--hatch-widget-accent);padding-bottom:8px}
+.sp-doc h2{font-size:15px;margin:22px 0 8px;color:var(--hatch-widget-accent)}
+.sp-doc p{margin:8px 0}
+.sp-doc ul{margin:6px 0;padding-left:20px}
+.sp-doc li{margin:4px 0}
+.sp-doc code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;background:var(--hatch-widget-surface-muted);padding:1px 5px;border-radius:4px}
+.sp-doc pre{background:var(--hatch-widget-surface-muted);border:1px solid var(--hatch-widget-border);border-radius:8px;padding:12px;overflow-x:auto;font-size:12.5px;line-height:1.5}
+.sp-doc pre code{background:none;padding:0}
+.sp-doc hr{border:none;border-top:1px solid var(--hatch-widget-border);margin:20px 0}
+.sp-doc strong{color:var(--hatch-widget-text)}
+</style>
+<div class="sp-doc">
+<h1>Scaffold prompt — gorf-dronebot</h1>
+<p>You are building <strong>gorf-dronebot</strong>: a real-time, audio-reactive &quot;burning robot&quot; visualizer for the browser. Source of truth is <code>spec.md</code> in this repo — if this prompt and the spec disagree, the spec wins and you flag the conflict instead of guessing.</p>
+<p>Build it <strong>one step at a time, in order</strong>. After each step, run it and confirm the &quot;Done when&quot; criteria before moving on. Do not skip ahead. Small steps, verified working, then the next.</p>
+<h2>Build order: MVP first</h2>
+<p><strong>MVP = steps 1–16, 19–22</strong> (everything needed for live playback: title screen → demo track or live input → real-time reactive visualizer). Build and verify all MVP steps before touching anything post-MVP.</p>
+<p><strong>Post-MVP = step 17 (MIDI), step 18 (recorder)</strong>, plus: personal track library, color grading controls. Do not build these during MVP — but keep the module seams clean so they slot in later (e.g. <code>js/input/midi.js</code> and <code>js/input/recorder.js</code> stay as empty stubs with their interfaces sketched).</p>
+<h2>Vision (from spec + discussion)</h2>
+<p>A robot rendered as a burning wireframe/point cloud in a dark void, caught in an endless loop: **coherent → dispersing into embers → reforming on the beat**. Its eyes never disperse. The vibe is 90s SNES games — mode-7 scrolling floor, parallax silhouettes, a giant bass-pulsing sun/moon, limited saturated palette (indigo night, orange/magenta fire, cyan accents) — but not pixel art. Silhouette-first composition: the robot is a dark shape rim-lit by its own fire.</p>
+<h2>Locked decisions (don&#x27;t bikeshed these)</h2>
+<ul>
+<li><strong>No build step.</strong> Vanilla JS + <code>&lt;script type=&quot;importmap&quot;&gt;</code>, Three.js pinned</li>
+<p>via CDN (jsdelivr, e.g. <code>three@0.160.0</code>). Static files only — must run from <code>file://</code>-ish static hosting, GitHub Pages, and as a Muse artifact, with zero tooling.</p>
+<li><strong>File layout:</strong></li>
+</ul>
+<pre><code>
+  index.html
+  css/style.css
+  js/main.js            — boot, loop, wiring
+  js/config.js          — all tunables in one place
+  js/audio/engine.js    — inputs, FFT, band split
+  js/audio/detect.js    — kick onset, energy/drop detection
+  js/scene/background.js — sky, sun/moon, parallax, mode-7 floor
+  js/scene/robot.js     — body build, point cloud, wireframe, coherence
+  js/scene/particles.js — embers, flame jets, shockwave rings
+  js/scene/camera.js    — drift, punch, drop zoom
+  js/scene/post.js      — bloom, composite (haze, vignette, CRT)
+  js/ui/title.js        — press-start screen + menu
+  js/ui/hud.js          — meters, selectors, MIDI learn panel
+  js/input/midi.js      — Web MIDI learn + triggers
+  js/input/recorder.js  — MediaRecorder capture
+  assets/demo/*.ogg     — already in repo, do not regenerate
+</code></pre>
+<ul>
+<li><strong>AudioContext must start from a user gesture.</strong> The title screen</li>
+<p>(&quot;PRESS START&quot;) is that gesture — don&#x27;t work around it, use it.</p>
+<li>Demo tracks in <code>assets/demo/</code> are fixtures. Never modify them.</li>
+<li>Dan&#x27;s open questions (spec Q1–Q4) are unresolved — pick sensible defaults,</li>
+<p>note them in code comments as <code>// DECISION NEEDED:</code>, keep moving.</p>
+</ul>
+<h2>Global conventions</h2>
+<ul>
+<li>Every tunable (particle counts, decay rates, colors, thresholds) lives in</li>
+<p><code>js/config.js</code>. No magic numbers scattered in modules.</p>
+<li>Every module exposes <code>init()</code>, <code>update(dt, audioState)</code>, and where relevant</li>
+<p><code>setQuality(level)</code>. <code>main.js</code> owns the loop and passes a single <code>audioState</code> object: `{ sub, mid, high, energy, kick (bool/impulse), snare, section: &#x27;verse&#x27;|&#x27;build&#x27;|&#x27;drop&#x27;, time }`.</p>
+<li>60fps target on a typical laptop. If a step hurts perf, note it and move</li>
+<p>on — there&#x27;s a dedicated performance step later.</p>
+<li>Commit after each working step (Dan reviews/pushes; you just commit</li>
+<p>locally).</p>
+</ul>
+<hr>
+<h2>Step 1 — Skeleton</h2>
+<p><strong>Goal:</strong> Project boots, Three.js loads, blank canvas resizes correctly.</p>
+<p><strong>Build:</strong></p>
+<ul>
+<li><code>index.html</code> with importmap (pinned three), canvas, <code>css/style.css</code></li>
+<p>(black background, canvas fills viewport).</p>
+<li><code>js/main.js</code>: renderer, scene, camera, resize handler, <code>requestAnimationFrame</code></li>
+<p>loop with delta-time clamp.</p>
+<li><code>js/config.js</code> with a first handful of tunables (colors, camera fov).</li>
+</ul>
+<p><strong>Done when:</strong> Opening <code>index.html</code> (via any static server) shows a black fullscreen canvas, no console errors, and resizing the window keeps it fullscreen.</p>
+<h2>Step 2 — Core loop + debug HUD</h2>
+<p><strong>Goal:</strong> Frame timing visible, module pattern established.</p>
+<p><strong>Build:</strong></p>
+<ul>
+<li>FPS meter (simple rolling average, drawn in a corner div).</li>
+<li><code>js/ui/hud.js</code> skeleton: collapsible panel, monospace, SNES-ish styling</li>
+<p>(chunky borders, limited palette).</p>
+<li>Wire the <code>audioState</code> object through the loop with dummy values</li>
+<p>(sine-based fake energy) so later steps can develop against it.</p>
+</ul>
+<p><strong>Done when:</strong> FPS number updates live; HUD panel toggles with <code>H</code>; the fake <code>audioState</code> is flowing into <code>update()</code> calls.</p>
+<h2>Step 3 — Sky, sun, parallax</h2>
+<p><strong>Goal:</strong> The SNES background reads instantly, even silent.</p>
+<p><strong>Build:</strong></p>
+<ul>
+<li>Gradient sky shader (deep indigo → near-black horizon glow).</li>
+<li>Giant sun/moon: radial-gradient sprite on the horizon, slow pulse driven</li>
+<p>by a <code>pulse</code> param (audio later; sine for now).</p>
+<li>Two parallax silhouette layers (distant mountains, ruined city): generate</li>
+<p>silhouettes on offscreen canvas, scroll at different rates, wrap seamlessly.</p>
+</ul>
+<p><strong>Done when:</strong> Static scene already looks like a SNES title screen backdrop; layers scroll at visibly different speeds; sun pulses gently.</p>
+<h2>Step 4 — Mode-7 floor</h2>
+<p><strong>Goal:</strong> Infinite grid rushing toward the camera, F-Zero energy.</p>
+<p><strong>Build:</strong></p>
+<ul>
+<li>Large plane with a custom shader: grid lines in world space, scrolling</li>
+<p>toward camera with time; fade to fog with distance.</p>
+<li>Floor color uniform lerped by a <code>heat</code> param (indigo → orange/magenta).</li>
+<li>Subtle reflection fake: vertical gradient glow under the robot&#x27;s position.</li>
+</ul>
+<p><strong>Done when:</strong> Grid scrolls smoothly toward the viewer; <code>heat</code> slider in HUD visibly shifts the floor from cool indigo to hot magenta.</p>
+<h2>Step 5 — Robot body</h2>
+<p><strong>Goal:</strong> A chunky mech exists as geometry.</p>
+<p><strong>Build:</strong></p>
+<ul>
+<li>Build a humanoid mech from Three.js primitives with **Gundam-chunky</li>
+<p>proportions<strong> (big shoulders, heavy legs, blocky torso) and </strong>IG-88-inspired styling**: cylindrical sensor head with a glowing band, twin photoreceptor eyes (these become the never-dispersing eye points later).</p>
+<li><strong>Keep the body very dark / desaturated gunmetal.</strong> The fire effect must</li>
+<p>read hard against the bot&#x27;s colors — contrast is a requirement, not a preference.</p>
+<li>Merge into one geometry group; store per-part transforms for later sway.</li>
+<li>Dark material, nearly black — it will be rim-lit by its own fire later.</li>
+</ul>
+<p><strong>Done when:</strong> The mech stands centered on the floor, reads as a strong dark silhouette against the sun, proportions feel heavy and dramatic.</p>
+<h2>Step 6 — Point cloud + wireframe + coherence</h2>
+<p><strong>Goal:</strong> The wireframe-ghost look, manually drivable.</p>
+<p><strong>Build:</strong></p>
+<ul>
+<li>Sample N points on the mech&#x27;s surfaces → <code>THREE.Points</code> with a custom</li>
+<p>shader (round soft points, heat color ramp).</p>
+<li><code>EdgesGeometry</code> per part, merged → wireframe lines with additive blending.</li>
+<li><strong>Coherence system:</strong> per-point <code>bodyPos</code> + precomputed <code>dispersedPos</code></li>
+<p>(upward drift + random spread). Uniform <code>uCoherence</code> 0..1 lerps between them; wireframe opacity follows coherence.</p>
+<li>Eyes: two separate bright points, NOT part of the disperse system.</li>
+<li>HUD slider drives <code>uCoherence</code> manually for now.</li>
+</ul>
+<p><strong>Done when:</strong> Dragging the slider from 1→0 visibly disintegrates the robot into rising embers and fades the wireframe; eyes stay locked; 1 snaps it back together.</p>
+<p>&gt; Palette call (locked): near-black gunmetal bot, white-orange-magenta &gt; fire, cyan reserved for wireframe accents / eyes / verse sections. A color &gt; tweak pass is a post-MVP item — don&#x27;t gold-plate this now.</p>
+<h2>Step 7 — Ember particles</h2>
+<p><strong>Goal:</strong> Fire that lives and dies.</p>
+<p><strong>Build:</strong></p>
+<ul>
+<li>Pooled particle system (fixed max, e.g. 4000): spawn at body surface points,</li>
+<p>rise with turbulence, cool white→orange→red→dark over life, die.</p>
+<li><code>emissionRate</code> param; per-particle heat attribute drives the color ramp in</li>
+<p>the shader.</p>
+<li>Additive blending, soft round sprites.</li>
+</ul>
+<p><strong>Done when:</strong> Cranking <code>emissionRate</code> fills the air with rising embers that visibly cool as they climb; zero rate leaves clean air; no allocation churn (pool reuse only).</p>
+<h2>Step 8 — Audio engine</h2>
+<p><strong>Goal:</strong> Real analysis from real inputs.</p>
+<p><strong>Build:</strong></p>
+<ul>
+<li><code>js/audio/engine.js</code>: AudioContext, AnalyserNode (fftSize 2048).</li>
+<li>Inputs: audio file picker, mic (<code>getUserMedia</code>), line-in (device selector</li>
+<p>via <code>enumerateDevices</code>), and demo-track loader (fetch ogg → decode → buffer source, looped).</p>
+<li>Band split per spec: sub (20–120Hz), mid (120–2k), high (2k+), normalized</li>
+<p>0..1 with smoothing.</p>
+<li><code>js/audio/detect.js</code>: kick onset via sub-band spectral flux + threshold;</li>
+<p>snare-ish onset via high-mid flux; <code>energy</code> = smoothed overall level; <code>section</code> = verse/build/drop from energy envelope and its derivative.</p>
+</ul>
+<p><strong>Done when:</strong> HUD shows live sub/mid/high meters bouncing for each input type; kick flashes a beat indicator on actual kicks; playing <code>demo-01-overworld-run.ogg</code> shows clearly different meter behavior than <code>demo-04-title-screen.ogg</code>.</p>
+<h2>Step 9 — Audio drives the robot</h2>
+<p><strong>Goal:</strong> The beat cycle comes alive.</p>
+<p><strong>Build:</strong></p>
+<ul>
+<li>Kick impulse → <code>uCoherence</code> snaps to 1 (fast attack), then decays toward 0</li>
+<p>between beats (decay rate in config).</p>
+<li>Mids → wireframe brightness + point size.</li>
+<li>Slow sway: torso/arms rotation driven by smoothed mids; head tilts toward</li>
+<p>the hottest band.</p>
+<li>Eye flicker with highs.</li>
+<li>Idle &quot;breathing&quot;: subtle scale/position oscillation when energy is low.</li>
+</ul>
+<p><strong>Done when:</strong> Playing a demo track, the robot visibly shatters between kicks and snaps together on them; sway and glow follow the music; muting the tab leaves it breathing gently.</p>
+<h2>Step 10 — Shockwaves + camera punch + sun pulse</h2>
+<p><strong>Goal:</strong> Every kick lands physically.</p>
+<p><strong>Build:</strong></p>
+<ul>
+<li>Pooled expanding rings on the floor per kick (shader: fading ring,</li>
+<p>additive).</p>
+<li>Camera punch: impulse on kick added to camera offset, decays exponentially.</li>
+<li>Sun/moon scale pulse on kick; floor <code>heat</code> nudged by energy.</li>
+</ul>
+<p><strong>Done when:</strong> Kicks thump — ring expands, camera kicks, sun throbs — all in sync with the beat indicator from Step 8.</p>
+<h2>Step 11 — Flame jets</h2>
+<p><strong>Goal:</strong> Snares and fills vent fire.</p>
+<p><strong>Build:</strong></p>
+<ul>
+<li>Shoulder/back vent emitters: cone-shaped burst particles on snare onset,</li>
+<p>bigger on fills (rapid successive onsets).</p>
+<li>Reuse the ember particle system with different spawn params (directional,</li>
+<p>shorter life, hotter colors).</p>
+</ul>
+<p><strong>Done when:</strong> Snare hits spit visible flame jets from the shoulders; <code>demo-02-boss-protocol.ogg</code> (dense drums) looks dramatically fierier than <code>demo-04</code>.</p>
+<h2>Step 12 — Palette grading by section</h2>
+<p><strong>Goal:</strong> Verse/build/drop each have a color story.</p>
+<p><strong>Build:</strong></p>
+<ul>
+<li><code>section</code> from detect.js drives a grade: verse = deep indigo/cyan accents,</li>
+<p>build = warming (orange creeps in), drop = full inferno (magenta/orange, denser fog).</p>
+<li>Lerp over ~2s to avoid pops. Fog density + floor heat follow the same</li>
+<p>grade.</p>
+</ul>
+<p><strong>Done when:</strong> Scrubbing through a track, the whole scene&#x27;s color temperature visibly shifts with the musical sections; transitions are smooth.</p>
+<h2>Step 13 — Post: bloom + composite</h2>
+<p><strong>Goal:</strong> Glow, haze, and the CRT option.</p>
+<p><strong>Build:</strong></p>
+<ul>
+<li>UnrealBloomPass (from three/addons) at modest strength — fire and eyes</li>
+<p>should bloom, the dark mech should not.</p>
+<li>Final composite ShaderPass: heat-haze distortion (noise, scaled by</li>
+<p>energy), vignette, and toggleable CRT (scanlines + slight chromatic aberration). CRT off by default.</p>
+</ul>
+<p><strong>Done when:</strong> Embers and eyes glow; drop sections shimmer with heat haze; toggling CRT gives a convincing retro-monitor feel without pixelation.</p>
+<h2>Step 14 — Title screen</h2>
+<p><strong>Goal:</strong> &quot;PRESS START&quot; — the SNES front door and the audio-gesture.</p>
+<p><strong>Build:</strong></p>
+<ul>
+<li>Overlay: game-style title <code>GORF DRONEBOT</code>, blinking <code>PRESS START</code>,</li>
+<p>menu (Demo tracks / Audio file / Mic / Line-in / Options).</p>
+<li>Selecting anything starts the AudioContext and drops into the visualizer.</li>
+<li>Background scene idles behind the menu (slow drift, gentle embers).</li>
+</ul>
+<p><strong>Done when:</strong> Cold load shows the title over the live background; pressing start with a demo track selected goes straight into a reacting visualizer; no audio-permission hacks needed.</p>
+<h2>Step 15 — Demo mode selector</h2>
+<p><strong>Goal:</strong> One-click testing, no live audio.</p>
+<p><strong>Build:</strong></p>
+<ul>
+<li>In-menu and in-HUD track list of the 4 bundled oggs (name, BPM, vibe from</li>
+<p><code>assets/demo/README.md</code>).</p>
+<li>Switching tracks crossfades analysis (no clicks/pops in the visuals).</li>
+</ul>
+<p><strong>Done when:</strong> All four tracks selectable from the title menu and the HUD; each plays looped through the full analysis path.</p>
+<h2>Step 16 — Camera system</h2>
+<p><strong>Goal:</strong> Cinematography, not just a tripod.</p>
+<p><strong>Build:</strong></p>
+<ul>
+<li>Slow orbital drift around the robot + subtle handheld noise.</li>
+<li>Drop detection → slow push-in; section change → gentle reframe.</li>
+<li>Manual orbit with mouse drag (auto-resumes after idle).</li>
+</ul>
+<p><strong>Done when:</strong> A full demo track plays like a directed shot — drifting, punching on kicks, pushing in on the drop — without ever losing the robot.</p>
+<h2>Step 17 — MIDI</h2>
+<p><strong>Goal:</strong> Dan&#x27;s DDJ-FLX10 can trigger the fire.</p>
+<p><strong>Build:</strong></p>
+<ul>
+<li>Web MIDI: device list, learn mode (click a trigger in HUD, move a</li>
+<p>knob/pad).</p>
+<li>At least 4 mappable triggers: manual eruption (coherence snap + jets),</li>
+<p>camera punch, palette shift, CRT toggle.</p>
+</ul>
+<p><strong>Done when:</strong> MIDI learn binds a controller knob and twisting it visibly fires an eruption; bindings persist in the browser.</p>
+<h2>Step 18 — Recorder</h2>
+<p><strong>Goal:</strong> Social-ready clips.</p>
+<p><strong>Build:</strong></p>
+<ul>
+<li><code>canvas.captureStream(60)</code> + <code>MediaStreamAudioDestinationNode</code> →</li>
+<p>MediaRecorder → downloadable <code>.webm</code>.</p>
+<li>HUD record button with timer; fixed 1080p-ish canvas option for export.</li>
+</ul>
+<p><strong>Done when:</strong> Recording 10s of a demo track produces a <code>.webm</code> with both video and the track&#x27;s audio in sync.</p>
+<h2>Step 19 — Keyboard shortcuts + help</h2>
+<p><strong>Goal:</strong> Playable without touching the mouse.</p>
+<p><strong>Build:</strong></p>
+<ul>
+<li><code>Space</code> = manual eruption, <code>C</code> = CRT toggle, <code>H</code> = HUD, <code>F</code> = fullscreen,</li>
+<p><code>1–4</code> = demo tracks, <code>M</code> = MIDI learn.</p>
+<li>Help overlay listing them, SNES-manual styling.</li>
+</ul>
+<p><strong>Done when:</strong> All shortcuts work from the visualizer; help overlay is legible and styled.</p>
+<h2>Step 20 — Performance pass</h2>
+<p><strong>Goal:</strong> Solid 60fps on a real laptop.</p>
+<p><strong>Build:</strong></p>
+<ul>
+<li>Auto quality scaler: monitors FPS, steps particle counts / bloom</li>
+<p>resolution / pixel ratio down (and back up) through 3 tiers.</p>
+<li>Manual quality override in HUD.</li>
+<li>Profile the worst offenders (likely bloom + particle overdraw) and note</li>
+<p>results in a comment.</p>
+</ul>
+<p><strong>Done when:</strong> Forced heavy scene holds 60fps via auto-scaling; tier changes are invisible-ish (no popping).</p>
+<h2>Step 21 — Drop shatter + tuning pass</h2>
+<p><strong>Goal:</strong> The money moment.</p>
+<p><strong>Build:</strong></p>
+<ul>
+<li>On drop detection: full shatter (coherence → 0 instantly, massive ember</li>
+<p>burst, jets, rings), then reform bigger (brief coherence overshoot/scale pop).</p>
+<li>Play every demo track end-to-end; tune thresholds, decays, and grade</li>
+<p>timings in <code>config.js</code> until kicks land and drops erupt.</p>
+</ul>
+<p><strong>Done when:</strong> <code>demo-03-glitch-machine.ogg</code>&#x27;s chaotic sections look chaotic and <code>demo-04-title-screen.ogg</code> stays dreamy — the visualizer clearly &quot;hears&quot; the difference.</p>
+<h2>Step 22 — Ship</h2>
+<p><strong>Goal:</strong> Someone else can run it.</p>
+<p><strong>Build:</strong></p>
+<ul>
+<li><code>README.md</code>: what it is, how to run (any static server / <code>npx serve</code>),</li>
+<p>controls, MIDI, demo mode.</p>
+<li>GitHub Pages: confirm it works from a <code>gh-pages</code> branch or <code>/docs</code></li>
+<p>folder — no build step means this should just work; verify.</p>
+<li>Muse artifact: package the static app as an artifact so Dan can run and</li>
+<p>view it right in the chat environment.</p>
+<li>Final commit, everything tidy.</li>
+</ul>
+<p><strong>Done when:</strong> Fresh clone → <code>npx serve</code> → title screen → demo track → fire. No console errors.</p>
+<hr>
+<h2>Acceptance bar for the whole thing</h2>
+<p>Play <code>demo-02-boss-protocol.ogg</code> fullscreen: the robot shatters and reforms on every kick, snares vent flame, the drop erupts, and the palette burns from indigo to inferno. Then <code>demo-04-title-screen.ogg</code>: same robot, same scene, but it breathes slow and dreamy. If both of those are true, it works.</p>
+</div>
