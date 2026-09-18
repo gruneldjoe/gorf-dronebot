@@ -153,7 +153,9 @@ window.addEventListener('keydown', (e) => {
 // R8: turntable toggle — button + T key.
 const spinBtn = document.getElementById('spin-toggle');
 function refreshSpinBtn() {
-  spinBtn.textContent = isTurntableOn() ? 'ON' : 'OFF';
+  const on = isTurntableOn();
+  spinBtn.textContent = on ? 'ON' : 'OFF';
+  spinBtn.classList.toggle('on', on); // UI pattern: toggles highlight while ON
 }
 function toggleSpin() {
   setTurntable(!isTurntableOn());
@@ -165,7 +167,9 @@ refreshSpinBtn();
 // R11: sway toggle — off switch for the mid-driven torso rock.
 const swayBtn = document.getElementById('sway-toggle');
 function refreshSwayBtn() {
-  swayBtn.textContent = isSwayOn() ? 'ON' : 'OFF';
+  const on = isSwayOn();
+  swayBtn.textContent = on ? 'ON' : 'OFF';
+  swayBtn.classList.toggle('on', on); // UI pattern: toggles highlight while ON
 }
 function toggleSway() {
   setSway(!isSwayOn());
@@ -177,7 +181,9 @@ refreshSwayBtn();
 // CRT toggle — button + C key (step 13; full shortcut map lands in step 19).
 const crtBtn = document.getElementById('crt-toggle');
 function refreshCrtBtn() {
-  crtBtn.textContent = isCrtOn() ? 'ON' : 'OFF';
+  const on = isCrtOn();
+  crtBtn.textContent = on ? 'ON' : 'OFF';
+  crtBtn.classList.toggle('on', on); // UI pattern: toggles highlight while ON
 }
 function toggleCrt() {
   setCrt(!isCrtOn());
@@ -287,7 +293,11 @@ initTitle({
 for (const [id, name] of [['fx-shockwaves', 'shockwaves'], ['fx-punch', 'cameraPunch'], ['fx-sun', 'sunPulse']]) {
   const btn = document.getElementById(id);
   const label = btn.textContent;
-  const refresh = () => { btn.textContent = label + ' ' + (isEffectOn(name) ? 'ON' : 'OFF'); };
+  const refresh = () => {
+    const on = isEffectOn(name);
+    btn.textContent = label + ' ' + (on ? 'ON' : 'OFF');
+    btn.classList.toggle('on', on); // UI pattern: toggles highlight while ON
+  };
   btn.addEventListener('click', () => { setEffect(name, !isEffectOn(name)); refresh(); });
   refresh();
 }

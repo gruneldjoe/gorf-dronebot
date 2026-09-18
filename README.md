@@ -87,6 +87,10 @@ Four full-scene color variants, re-tinted live with no rebuilds: **inferno** (de
 - **Source name** — what audio is currently loaded.
 - `H` hides the whole HUD for clean recording.
 
+Toggle buttons (SPIN, SWAY, CRT, FX RINGS/PUNCH/SUN) glow cyan while ON;
+one-shot triggers (TRIG, SRC) never hold a highlight — they fire and return
+to rest.
+
 ### Triggers (TRIG row)
 
 Four big buttons, each fires its action when clicked:
