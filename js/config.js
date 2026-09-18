@@ -74,6 +74,21 @@ export const CONFIG = {
     rise: [1.5, 3.5],      // initial upward velocity
     spread: 0.9,           // lateral velocity
   },
+  jets: {
+    count: 400,
+    vents: [
+      { pos: [-1.9, 6.3, 0], dir: [-0.35, 1, 0.1] },   // left shoulder
+      { pos: [1.9, 6.3, 0], dir: [0.35, 1, 0.1] },     // right shoulder
+      { pos: [-0.9, 5.6, -0.8], dir: [-0.15, 0.9, -0.5] }, // back left
+      { pos: [0.9, 5.6, -0.8], dir: [0.15, 0.9, -0.5] },   // back right
+    ],
+    burst: 26,            // particles per vent per snare hit
+    fillBurst: 60,        // particles per vent on fill / eruption
+    life: [0.35, 0.9],    // seconds — shorter than embers
+    speed: [6, 11],       // launch speed
+    spread: 0.45,         // cone spread
+    snareThreshold: 0.55,
+  },
   effects: {
     ringPool: 10,      // shockwave ring pool (step 10)
     ringLife: 0.9,     // seconds per shockwave

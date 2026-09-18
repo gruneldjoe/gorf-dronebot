@@ -3,6 +3,7 @@ import { CONFIG } from './config.js';
 import { initBackground, updateBackground } from './scene/background.js';
 import { initRobot, updateRobot, setTurntable, isTurntableOn, setSway, isSwayOn } from './scene/robot.js';
 import { initEmbers, updateEmbers } from './scene/embers.js';
+import { initJets, updateJets } from './scene/jets.js';
 import { initEffects, updateEffects, setEffect, isEffectOn } from './scene/effects.js';
 import { initHUD, updateHUD, toggleHUD, getSourceUI, refreshLineInputs, setSourceName } from './ui/hud.js';
 import {
@@ -33,6 +34,7 @@ camera.lookAt(...CONFIG.camera.lookAt);
 initBackground(scene);
 const robotApi = initRobot(scene);
 initEmbers(robotApi);
+initJets(robotApi);
 initEffects(scene);
 initHUD();
 
@@ -144,6 +146,7 @@ function tick() {
   updateRobot(dt, audioState);
   updateEffects(dt, audioState, camera);
   updateEmbers(dt, audioState);
+  updateJets(dt, audioState);
   updateHUD(dt, audioState);
 
   renderer.render(scene, camera);
