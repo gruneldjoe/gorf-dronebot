@@ -19,6 +19,18 @@ export const DEMO_TRACKS = [
     arr: 'VVVVBBBBDDDDOOOO' },
   { n: 4, label: 'TITLE', file: 'demo-04-title-screen.ogg', bpm: 92, vibe: 'dreamy pads',
     arr: 'VVVVVVVVBBBBBBBB' }, // gentle crest, never drops — no shatter
+  { n: 5, label: 'NEON', file: 'demo-05-neon-highway.ogg', bpm: 118, vibe: 'synthwave cruiser',
+    arr: 'VVVVBBBBDDDDOOOO' },
+  { n: 6, label: 'HALFTIME', file: 'demo-06-halftime-graveyard.ogg', bpm: 150, vibe: 'halftime trap',
+    arr: 'VVVVVVBBBBDDDDOO' },
+  { n: 7, label: 'JUNGLE', file: 'demo-07-jungle-circuit.ogg', bpm: 172, vibe: 'jungle breaks',
+    arr: 'VVBBBBDDDDDDOOOO' },
+  { n: 8, label: 'VOID', file: 'demo-08-void-choir.ogg', bpm: 100, vibe: 'dark ambient techno',
+    arr: 'VVVVVBBBBBBDDDOO' },
+  { n: 9, label: 'HYPER', file: 'demo-09-hyper-popcorn.ogg', bpm: 150, vibe: 'hyperpop chip',
+    arr: 'VVVVBBBBDDDDOOOO' },
+  { n: 10, label: 'DESCENT', file: 'demo-10-final-descent.ogg', bpm: 132, vibe: 'epic closer',
+    arr: 'VVVBBBBBDDDDDDOO' },
 ];
 
 let ctx = null;

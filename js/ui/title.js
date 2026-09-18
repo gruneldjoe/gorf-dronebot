@@ -79,7 +79,8 @@ export function initTitle(callbacks) {
     if (e.key === 'ArrowDown') { selIdx = (selIdx + 1) % rows.length; render(); e.preventDefault(); }
     else if (e.key === 'ArrowUp') { selIdx = (selIdx + rows.length - 1) % rows.length; render(); e.preventDefault(); }
     else if (e.key === 'Enter' || e.key === ' ') { activate(); e.preventDefault(); }
-    else if (e.key >= '1' && e.key <= '4') { selIdx = parseInt(e.key, 10) - 1; activate(); }
+    else if (e.key >= '1' && e.key <= '9') { selIdx = parseInt(e.key, 10) - 1; activate(); }
+    else if (e.key === '0') { selIdx = 9; activate(); } // 0 = track 10
   });
 }
 

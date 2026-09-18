@@ -126,7 +126,7 @@ body.perfhide { cursor: none; }
 }
 .press-start.hidden { display: none; }
 @keyframes blink { 50% { opacity: 0; } }
-.title-menu { margin-top: 40px; min-width: 360px; }
+.title-menu { margin-top: 40px; min-width: 360px; max-height: 52vh; overflow-y: auto; }
 .title-menu.hidden { display: none; }
 .tm-row {
   padding: 9px 18px 9px 36px; color: #cfd2ff; font-size: 17px;

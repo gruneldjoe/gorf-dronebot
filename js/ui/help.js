@@ -7,7 +7,7 @@ const ROWS = [
   ['C', 'CRT monitor on/off'],
   ['H', 'HUD on/off'],
   ['F', 'fullscreen'],
-  ['1 – 4', 'demo tracks'],
+  ['1 – 9, 0', 'demo tracks 1 – 10'],
   ['T', 'turntable spin on/off'],
   ['?', 'this manual'],
   ['M', 'MIDI learn: ERUPT (shift+click any TRIG button to learn it)'],

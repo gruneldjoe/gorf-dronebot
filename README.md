@@ -8,11 +8,11 @@ Live at **https://gruneldjoe.github.io/gorf-dronebot/** — or open `index.html`
 
 Press **START** (click/tap) — browsers require a user gesture before audio plays.
 
-Pick a demo track (keys `1`–`4`), or drop in your own audio file.
+Pick a demo track (keys `1`–`9`, `0` for 10), or drop in your own audio file.
 
 ## Demo tracks
 
-Four chiptune tracks, synthesized in Python (`tools/gen_demo_tracks.py`), each with a real verse/build/drop/outro arrangement:
+Ten synthesized tracks (`tools/gen_demo_tracks.py` — numpy + `ffmpeg` to OGG, deterministic seed), each with a real 16-bar arrangement the player reads off the audio clock:
 
 | # | Title | Vibe |
 |---|-------|------|
@@ -20,6 +20,12 @@ Four chiptune tracks, synthesized in Python (`tools/gen_demo_tracks.py`), each w
 | 2 | BOSS | Aggressive boss protocol — 160 BPM |
 | 3 | GLITCH | Bitcrushed machine — 128 BPM |
 | 4 | TITLE | Dreamy pads, never drops — 92 BPM |
+| 5 | NEON | Synthwave cruiser, gated snare — 118 BPM |
+| 6 | HALFTIME | Halftime trap, booming 808s — 150 BPM |
+| 7 | JUNGLE | Jungle breaks, Reese bass — 172 BPM |
+| 8 | VOID | Dark ambient techno, industrial kicks — 100 BPM |
+| 9 | HYPER | Hyperpop chip sugar rush — 150 BPM |
+| 10 | DESCENT | Epic closer, biggest drop in the library — 132 BPM |
 
 Regenerate them with `python3 tools/gen_demo_tracks.py` (needs `numpy`, outputs OGG via `ffmpeg`).
 
@@ -31,7 +37,7 @@ Everything the app does, what it looks like, and why you'd touch it.
 
 | Source | Effect | Use |
 |--------|--------|-----|
-| `1`–`4` / DEMO select | Plays one of the four built-in demo tracks. The player knows each track's BPM and 16-bar arrangement, so verse/build/drop/outro come from the audio clock — exact, not guessed. | Instant gratification, testing, DJ-less demoing. |
+| `1`–`9` / DEMO select | Plays one of the ten built-in demo tracks. The player knows each track's BPM and 16-bar arrangement, so verse/build/drop/outro come from the audio clock — exact, not guessed. | Instant gratification, testing, DJ-less demoing. |
 | FILE | Loads any audio file from disk into the engine. | Visualize your own tracks or mixes. |
 | MIC | Live microphone input through the onset detector. | Clap, beatbox, or play an instrument at it — the robot reacts to you. |
 | LINE | Picks a system audio input device (interface, loopback, etc.). | Feed a DJ mixer, DAW output, or another app straight in. |
@@ -142,7 +148,7 @@ Your own music, persisted in the browser (IndexedDB):
 | Key | Action |
 |-----|--------|
 | `SPACE` | Manual eruption (snap the ghost back together) |
-| `1`–`4` | Demo tracks |
+| `1`–`9`, `0` | Demo tracks 1–10 |
 | `C` | CRT monitor on/off |
 | `H` | HUD on/off |
 | `F` | Fullscreen |

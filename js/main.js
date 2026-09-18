@@ -145,7 +145,8 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'f' || e.key === 'F') toggleFullscreen();
   else if (e.key === ' ') { e.preventDefault(); snapCoherence(); triggerEruption(1); }
   else if (e.key === '?') toggleHelp();
-  else if (e.key >= '1' && e.key <= '4') playDemo(parseInt(e.key, 10));
+  else if (e.key >= '1' && e.key <= '9') playDemo(parseInt(e.key, 10));
+  else if (e.key === '0') playDemo(10); // ten demo tracks: 1-9, 0 = 10
   else if (e.key === 'p' || e.key === 'P') togglePerfMode(); // R13
   else if (e.key === 'o' || e.key === 'O') takePhoto(); // R23
   else if (e.key === 'g' || e.key === 'G') fireGif(); // R22
