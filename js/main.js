@@ -25,7 +25,7 @@ import {
 
 // --- Renderer ---
 const canvas = document.getElementById('scene');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true }); // R22: GIF burst grabs frames off-rAF
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 
@@ -291,6 +291,7 @@ let keyFollow = false, crowdMode = false, directorOn = false;
 let crowdHeat = 0;
 let overdrive = 0; // R24: 0..1, fills with room energy
 let timeScale = 1, bulletT = 0; // R15: bullet-time
+let slowT = 0; // R15: dilated shared clock — everything time-based slows together
 let lastKeyEval = 0;
 let gifBusy = false;
 let perfMode = false;
@@ -344,8 +345,9 @@ libFileInput.style.display = 'none';
 document.body.appendChild(libFileInput);
 async function refreshLibrary() {
   const tracks = await listTracks().catch(() => []);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   postUI.libSelect.innerHTML = '<option value="">-- library --</option>' +
-    tracks.map((t) => `<option value="${t.id}">${t.name}</option>`).join('');
+    tracks.map((t) => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
 }
 postUI.libAdd.addEventListener('click', () => libFileInput.click());
 libFileInput.addEventListener('change', async () => {
@@ -513,12 +515,13 @@ function tick() {
   }
   const dt = Math.min(rawDt * timeScale, 0.05);
   const t = clock.elapsedTime;
+  slowT += dt; // R15: the shared clock runs at the dilated rate — true slow-mo
+  audioState.time = slowT;
 
   // Live FFT analysis → sub/mid/high/kick/snare/energy/section.
   updateAudio(dt, audioState);
   audioState.events.length = 0; // cleared each frame; robot pushes kick events
-  audioState.time = t;
-  audioState.pulse = Math.pow(Math.sin(t * 2.2) * 0.5 + 0.5, 2.0) * 0.35;
+  audioState.pulse = Math.pow(Math.sin(slowT * 2.2) * 0.5 + 0.5, 2.0) * 0.35;
   const heatSlider = document.getElementById('heat-slider');
   audioState.heat = heatSlider ? parseFloat(heatSlider.value) : 0.25;
   // R25: crowd mode — audience noise raises the HEAT bias.

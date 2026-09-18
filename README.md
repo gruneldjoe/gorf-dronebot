@@ -46,12 +46,16 @@ Everything the app does, what it looks like, and why you'd touch it.
 - **Eyes** — two ember-orange eye points that never disperse. The ghost is always watching.
 - **Turntable** (`T` / SPIN toggle) — slow turntable rotation of the model so you can review it from all sides. Default on.
 - **Sway** (SWAY toggle) — mid-frequency-driven torso rock (roll + pitch). Makes the robot feel like it's riding the groove instead of standing at attention. Default on, recently bumped +20%.
+- **Mech chassis** (MECH button) — four procedural bodies, same ghost soul: **ghost** (default chunky), **scout** (tall and thin), **brute** (wide and heavy), **seraph** (winged, wings flap with the mids). Persists across sessions.
+- **Stereo duel** (DUEL toggle) — a second mech materializes stage-right, driven by the **right audio channel** while the main mech takes the left. They battle for coherence on stereo tracks; on mono they move as one.
+- **Persistent wear** — the mech remembers. Drops and overdrive detonations scorch the armor (stored in localStorage); the burn accumulates across sessions.
 
 ### Beat-reactive FX (FX row: RINGS / PUNCH / SUN — all toggleable, all default on)
 
 - **Shockwave rings** — an expanding floor ring fires on every kick, scaled by kick strength. Gives each kick a physical footprint on the mode-7 floor.
 - **Camera punch** — quick dolly-in + FOV kick on each beat, decaying exponentially so it snaps back. Makes drops feel like the camera got shoved.
 - **Sun pulse** — the horizon sun swells with each kick on top of its slow ambient pulse. The whole sky breathes with the track.
+- **Vox swell (stem-approx)** — the presence band (2–6 kHz, where vocals live) breathes the sun between kicks. Kick drives coherence, snare drives jets, vox drives the sun.
 
 ### Cinematography
 
@@ -59,6 +63,9 @@ Everything the app does, what it looks like, and why you'd touch it.
 - **Drop push-in** — on section changes into a drop, the camera dollies closer. Drops feel bigger without touching the robot.
 - **Reframe jitter** — small azimuth nudge on every section change, so verse/build/drop each get a slightly fresh angle.
 - **Manual orbit** — drag to orbit yourself; after 4 idle seconds the auto-drift resumes.
+- **Auto-director** (DIR toggle) — hard concert-film cuts to fresh angles on every section change. For when you want the camera to perform too.
+- **Bullet-time** (`B`) — brief slow-mo dilation (~2s); buffer sources (demo/file) pitch-drop with it. One-shot, fires and returns to rest.
+- **Performance mode** (`P`) — fullscreen ritual: every pixel of UI evaporates, cursor hides. Press `P` again to come back.
 
 ### Stage
 
@@ -67,10 +74,14 @@ Everything the app does, what it looks like, and why you'd touch it.
 - **Giant sun** — sits on the horizon, ambient pulse + kick swell (see Sun pulse).
 - **Fog + heat grade** — a global "grade" lerps toward verse/build/drop heat targets; fog density and scene heat follow it over ~2 seconds so transitions never pop.
 - **HEAT slider** — manual bias on top of the audio-driven heat. Crank it to force the scene hot regardless of what the detector thinks.
+- **Day/night cycle** — an 8-minute cycle: the sun dips toward the horizon and pales into a moon, the sky deepens. Long sets get a whole arc.
+- **Crowd mode** (CROWD toggle, next to HEAT) — audience noise raises the HEAT bias. Point a mic at the room and let the crowd drive the fire.
 
 ### Palettes
 
 Four full-scene color variants, re-tinted live with no rebuilds: **inferno** (default — white-orange-magenta fire), **toxic** (acid green), **glacier** (ice blue), **ultraviolet** (purple). Cycle with the PAL trigger.
+
+- **Key-follow** (KEY toggle) — the palette breathes with the music: the spectral centroid picks the palette every few seconds. Bright dense sections drift ultraviolet, dark heavy ones sink inferno.
 
 ### Post-processing
 
@@ -106,6 +117,21 @@ Four big buttons, each fires its action when clicked:
 
 - **● REC** button (or `R`) — captures the canvas at 60fps plus the master audio tap and auto-downloads `gorf-dronebot-<timestamp>.webm` when you stop. Live timer while rolling.
 - **1080p checkbox** — resizes the render buffer to 1920×1080 for the take, restores your window size after. For clean clip exports.
+- **9:16 checkbox** — vertical 1080×1920 crop for Shorts/TikTok.
+- **PIC** button (or `O`) — photo mode: hides the UI, renders one 2× frame, downloads a PNG still.
+- **GIF** button (or `G`) — GIF burst: captures 6 seconds at 12fps (320px wide) and downloads a looped GIF. Encoded in-app, no server.
+
+### Overdrive
+
+The **ODRIVE meter** fills with room energy (high band + presence). When it maxes out — or when you press `X` past 40% — it **detonates**: mega-eruption, triple shockwave, camera punch, and a frame-whiting flash. The meter is the crowd-hype gauge; detonation is the payoff.
+
+### Library (LIB row)
+
+Your own music, persisted in the browser (IndexedDB):
+
+- **ADD** — pick audio files; they're stored locally with name + date.
+- **Select** — plays a stored track through the full analysis path, applying its saved preset.
+- **SET** — saves the current palette + HEAT slider as that track's visual preset. Every track can have its own look.
 
 ### Field manual
 
@@ -123,6 +149,11 @@ Four big buttons, each fires its action when clicked:
 | `T` | Turntable spin on/off |
 | `M` | MIDI learn: ERUPT (shift+click any TRIG button to learn that one) |
 | `R` | Record a `.webm` clip (HUD REC button; 1080p checkbox for export size) |
+| `P` | Performance mode: fullscreen, all UI hidden |
+| `O` | Photo mode: hi-res still download |
+| `G` | GIF burst: 6-second looped capture |
+| `B` | Bullet-time: brief slow-mo |
+| `X` | Detonate OVERDRIVE early |
 | `?` | Field manual |
 
 ### MIDI
