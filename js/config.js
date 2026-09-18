@@ -57,6 +57,7 @@ export const CONFIG = {
     pos: [0, 0, 0],
     turntable: true,       // slow model turntable (review aid; camera step decides final)
     turntableSpeed: 0.25,
+    sway: true,            // R11: mid-driven torso sway default
     pointCount: 6000,      // ghost point cloud
     pointSize: 0.5,
     wireOpacity: 0.85,

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
 import { initBackground, updateBackground } from './scene/background.js';
-import { initRobot, updateRobot, setTurntable, isTurntableOn } from './scene/robot.js';
+import { initRobot, updateRobot, setTurntable, isTurntableOn, setSway, isSwayOn } from './scene/robot.js';
 import { initEmbers, updateEmbers } from './scene/embers.js';
 import { initEffects, updateEffects, setEffect, isEffectOn } from './scene/effects.js';
 import { initHUD, updateHUD, toggleHUD, getSourceUI, refreshLineInputs, setSourceName } from './ui/hud.js';
@@ -102,6 +102,18 @@ function toggleSpin() {
 }
 spinBtn.addEventListener('click', toggleSpin);
 refreshSpinBtn();
+
+// R11: sway toggle — off switch for the mid-driven torso rock.
+const swayBtn = document.getElementById('sway-toggle');
+function refreshSwayBtn() {
+  swayBtn.textContent = isSwayOn() ? 'ON' : 'OFF';
+}
+function toggleSway() {
+  setSway(!isSwayOn());
+  refreshSwayBtn();
+}
+swayBtn.addEventListener('click', toggleSway);
+refreshSwayBtn();
 
 // R10: per-effect toggles — shockwave rings, camera punch, sun pulse.
 for (const [id, name] of [['fx-shockwaves', 'shockwaves'], ['fx-punch', 'cameraPunch'], ['fx-sun', 'sunPulse']]) {

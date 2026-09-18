@@ -11,6 +11,7 @@ let robotGroup, mechGroup, sampler;
 let pointsMat, wireMat, eyeMat, fireLight;
 let coherence = 1;
 let turntableOn = true; // R8: user-toggleable turntable
+let swayOn = true; // R11: user-toggleable mid-driven sway
 // Step 9: pivot groups for head + arms (identity at build, rotated at runtime)
 let headGroup, armL, armR;
 // Step 9: audio-follow state
@@ -20,6 +21,8 @@ let headTiltX = 0, headTiltZ = 0;
 
 export function setTurntable(on) { turntableOn = !!on; }
 export function isTurntableOn() { return turntableOn; }
+export function setSway(on) { swayOn = !!on; }
+export function isSwayOn() { return swayOn; }
 
 function part(geo, x, y, z, mat, opts = {}) {
   const m = new THREE.Mesh(geo, mat);
@@ -284,6 +287,7 @@ export function initRobot(scene) {
   robotGroup.add(mechGroup);
   sampler = new SurfaceSampler();
   turntableOn = CONFIG.robot.turntable;
+  swayOn = CONFIG.robot.sway;
 
   scene.add(new THREE.AmbientLight(0x2a3a66, 0.7));
   const key = new THREE.DirectionalLight(0xffd9a8, 1.4);
@@ -341,8 +345,8 @@ export function updateRobot(dt, audioState) {
 
   if (turntableOn) robotGroup.rotation.y += dt * CONFIG.robot.turntableSpeed;
 
-  // Slow sway: torso roll driven by smoothed mids.
-  const swayAmp = 0.02 + midS * CONFIG.robot.swayGain;
+  // Slow sway: torso roll driven by smoothed mids. R11: toggleable.
+  const swayAmp = swayOn ? (0.02 + midS * CONFIG.robot.swayGain) : 0;
   mechGroup.rotation.z = Math.sin(t * 0.9) * swayAmp;
   mechGroup.rotation.x = Math.sin(t * 0.63 + 1.3) * swayAmp * 0.6;
 

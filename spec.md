@@ -126,6 +126,8 @@ The *feeling* of a SNES game, translated, not literal pixels:
 - R10. Effect toggles: HUD buttons to individually enable/disable the
   kick-driven effects — shockwave rings, camera punch, sun pulse. All
   default on. (Dan, 2026-09-17)
+- R11. Sway toggle: HUD button to enable/disable the mid-driven torso sway.
+  Default on. (Dan, 2026-09-17)
 
 ## 9. Open questions (resolved 2026-09-17)
 
