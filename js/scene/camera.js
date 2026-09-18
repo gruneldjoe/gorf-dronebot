@@ -14,6 +14,15 @@ let prevSection = 'verse';
 let reframeAz = 0, reframeEl = 0;
 const _look = new THREE.Vector3();
 
+// R14: auto-director — hard concert-film cut to a fresh angle.
+export function directorCut() {
+  azBase += (Math.random() - 0.5) * 1.4;
+  elBase = THREE.MathUtils.clamp(0.05 + Math.random() * 0.3, 0.02, 0.5);
+  distBase = 11 + Math.random() * 9;
+  reframeAz = 0;
+  reframeEl = 0;
+}
+
 export function initCamera(camera, canvas) {
   const p = new THREE.Vector3(...CONFIG.camera.pos);
   _look.set(...CONFIG.camera.lookAt);

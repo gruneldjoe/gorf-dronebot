@@ -69,3 +69,9 @@ export function cyclePalette() {
 export function currentPalette() {
   return current;
 }
+
+// R17: day/night reads the live color so it can lerp toward night variants.
+export function getPaletteColor(key) {
+  const e = registry.find((r) => r.key === key);
+  return e ? e.color : null;
+}

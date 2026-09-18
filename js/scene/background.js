@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
-import { registerPaletteColor } from './palette.js';
+import { registerPaletteColor, getPaletteColor } from './palette.js';
 
 // Step 17: palette-shift helper — registers the live color and returns it.
 const pal = (key, hex) => registerPaletteColor(key, new THREE.Color(hex));
@@ -19,6 +19,19 @@ function mulberry32(seed) {
 let skyMat, sunMesh, sunBaseSize, parallaxLayers = [], floorMat, floorScroll = 0;
 // Step 10: decaying kick bump added to the sun scale, driven by pulseSun().
 let sunKick = 0;
+// R17: day/night — an 8-minute cycle; the sun dips and pales into a moon.
+let dnT = 0.15; // start mid-morning
+const DN_CYCLE = 480; // seconds
+const NIGHT_TOP = new THREE.Color(0x020309);
+const NIGHT_HOR = new THREE.Color(0x05070f);
+const NIGHT_HOT = new THREE.Color(0x0a0f22);
+const MOON_CORE = new THREE.Color(0xe8f0ff);
+const MOON_GLOW = new THREE.Color(0x9db8e8);
+// R19: vox swell — the presence band breathes the sun (stem-approx).
+let voxSwell = 0;
+export function addVoxSwell(v) {
+  voxSwell = Math.min(1, voxSwell + v * 0.12);
+}
 
 export function pulseSun(strength) {
   sunKick = Math.min(1.5, sunKick + strength * CONFIG.sun.kickGain);
@@ -31,9 +44,11 @@ function makeSky() {
     depthWrite: false,
     fog: false,
     uniforms: {
-      uTop: { value: pal('skyTop', CONFIG.palette.skyTop) },
-      uHorizon: { value: pal('skyHorizon', CONFIG.palette.skyHorizon) },
-      uHotHorizon: { value: pal('skyHorizonHot', CONFIG.palette.skyHorizonHot) },
+      // R17: owned colors — copied from the palette registry each frame so
+      // day/night can lerp them without mutating registered colors.
+      uTop: { value: new THREE.Color() },
+      uHorizon: { value: new THREE.Color() },
+      uHotHorizon: { value: new THREE.Color() },
       uHeat: { value: 0 },
     },
     vertexShader: `
@@ -65,8 +80,8 @@ function makeSun() {
     depthWrite: false,
     fog: false,
     uniforms: {
-      uCore: { value: pal('sunCore', CONFIG.palette.sunCore) },
-      uGlow: { value: pal('sunGlow', CONFIG.palette.sunGlow) },
+      uCore: { value: new THREE.Color() },
+      uGlow: { value: new THREE.Color() },
     },
     vertexShader: `
       varying vec2 vUv;
@@ -201,6 +216,16 @@ function makeFloor() {
 }
 
 export function initBackground(scene) {
+  // R17: register sky/sun colors so palette cycling re-tints them. The
+  // shaders hold owned copies, refreshed from the registry every frame,
+  // so day/night can lerp without mutating registered colors.
+  for (const [k, hex] of [
+    ['skyTop', CONFIG.palette.skyTop],
+    ['skyHorizon', CONFIG.palette.skyHorizon],
+    ['skyHorizonHot', CONFIG.palette.skyHorizonHot],
+    ['sunCore', CONFIG.palette.sunCore],
+    ['sunGlow', CONFIG.palette.sunGlow],
+  ]) pal(k, hex);
   scene.add(makeSky());
   sunMesh = makeSun();
   scene.add(sunMesh);
@@ -214,9 +239,25 @@ export function initBackground(scene) {
 
 export function updateBackground(scene, dt, audioState) {
   const t = audioState.time;
-  // Sun pulse: gentle sine plus a decaying kick bump (step 10).
+  // R17: day/night — 8-minute cycle; the sun dips and pales into a moon.
+  dnT = (dnT + dt / DN_CYCLE) % 1;
+  const elev = Math.sin(dnT * Math.PI * 2);
+  const nightAmt = THREE.MathUtils.smoothstep(-elev, 0.05, 0.45);
+  const skyU = skyMat.uniforms;
+  skyU.uTop.value.copy(getPaletteColor('skyTop')).lerp(NIGHT_TOP, nightAmt);
+  skyU.uHorizon.value.copy(getPaletteColor('skyHorizon')).lerp(NIGHT_HOR, nightAmt);
+  skyU.uHotHorizon.value.copy(getPaletteColor('skyHorizonHot')).lerp(NIGHT_HOT, nightAmt);
+  const sunU = sunMesh.material.uniforms;
+  sunU.uCore.value.copy(getPaletteColor('sunCore')).lerp(MOON_CORE, nightAmt);
+  sunU.uGlow.value.copy(getPaletteColor('sunGlow')).lerp(MOON_GLOW, nightAmt);
+  sunMesh.position.y = 14 + Math.max(0, elev) * 24;
+
+  // Sun pulse: gentle sine + decaying kick bump (step 10) + vox breathing
+  // (R19 stem-approx); the moon runs a touch smaller.
   sunKick *= Math.exp(-dt * CONFIG.sun.kickDecay);
-  const s = sunBaseSize * (1 + audioState.pulse * CONFIG.sun.pulseAmount * 3 + sunKick);
+  voxSwell *= Math.exp(-dt * 3.0);
+  const s = sunBaseSize * (1 - nightAmt * 0.25)
+    * (1 + audioState.pulse * CONFIG.sun.pulseAmount * 3 + sunKick + voxSwell * 0.15);
   sunMesh.scale.setScalar(s);
 
   // Parallax scroll — layers wrap seamlessly via RepeatWrapping

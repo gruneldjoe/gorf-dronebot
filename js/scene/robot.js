@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { SurfaceSampler } from '../util/sample.js';
-import { registerPaletteColor } from './palette.js';
+import { registerPaletteColor, getPaletteColor } from './palette.js';
 
 // Step 17: palette-shift helper — registers the live color and returns it.
 const pal = (key, hex) => registerPaletteColor(key, new THREE.Color(hex));
@@ -25,6 +25,28 @@ let headGroup, armL, armR;
 let prevKick = 0;
 let subS = 0, midS = 0, highS = 0;
 let headTiltX = 0, headTiltZ = 0;
+
+// R12: mech chassis variants — same ghost soul, different silhouettes.
+// w/h/s reshape the whole mechGroup (ghost points + wireframe follow);
+// seraph gets wing planes.
+export const CHASSIS = {
+  ghost:  { w: 1.0,  h: 1.0,  s: 1.0,  wings: false },
+  scout:  { w: 0.72, h: 1.12, s: 0.88, wings: false },
+  brute:  { w: 1.32, h: 0.94, s: 1.14, wings: false },
+  seraph: { w: 0.85, h: 1.05, s: 1.0,  wings: true },
+};
+export const CHASSIS_ORDER = ['ghost', 'scout', 'brute', 'seraph'];
+let chassis = 'ghost';
+try { chassis = localStorage.getItem('gorf.mech.chassis.v1') || 'ghost'; } catch (_) { /* private mode */ }
+if (!CHASSIS[chassis]) chassis = 'ghost';
+// R26: persistent wear — scorch that carries across sessions. It remembers.
+const SCORCH = new THREE.Color(0x2a1408);
+let wear = 0;
+try { wear = parseFloat(localStorage.getItem('gorf.mech.wear.v1')) || 0; } catch (_) { /* private mode */ }
+wear = Math.min(1, Math.max(0, wear));
+let wearSavedAt = 0;
+let wingL = null, wingR = null;
+let sceneRef = null, lightsBuilt = false;
 
 export function setTurntable(on) { turntableOn = !!on; }
 export function isTurntableOn() { return turntableOn; }
@@ -65,6 +87,7 @@ function buildMech() {
   const dark = new THREE.MeshStandardMaterial({
     color: pal('bot', CONFIG.palette.bot), roughness: 0.5, metalness: 0.8,
   });
+  dark.color.lerp(SCORCH, wear * 0.45); // R26: scorch remembers past sets
   const glow = new THREE.MeshStandardMaterial({
     color: 0x140a04, emissive: 0xff5a2a, emissiveIntensity: 2.2,
   });
@@ -100,6 +123,24 @@ function buildMech() {
   // Physical eye meshes (the never-dispersing eye POINTS are separate)
   for (const s of [-1, 1]) {
     part(new THREE.SphereGeometry(0.09, 10, 10), s * 0.18, 0.58, 0.44, glow, hg);
+  }
+
+  // R12: seraph wings — ember-lit planes on the back, flapped at runtime.
+  wingL = wingR = null;
+  if (CHASSIS[chassis].wings) {
+    const wingGeo = new THREE.PlaneGeometry(2.6, 1.1);
+    const wingMat = new THREE.MeshStandardMaterial({
+      color: 0x140a04, emissive: 0xff5a2a, emissiveIntensity: 1.2,
+      transparent: true, opacity: 0.85, side: THREE.DoubleSide,
+    });
+    for (const s of [-1, 1]) {
+      const w = new THREE.Mesh(wingGeo, wingMat);
+      w.position.set(s * 1.9, 5.9, -0.9);
+      w.rotation.y = s * 0.55;
+      w.rotation.z = s * 0.25;
+      mechGroup.add(w);
+      if (s < 0) wingL = w; else wingR = w;
+    }
   }
 }
 
@@ -288,6 +329,7 @@ function buildEyes() {
 }
 
 export function initRobot(scene) {
+  sceneRef = scene;
   robotGroup = new THREE.Group();
   robotGroup.position.set(...CONFIG.robot.pos);
   mechGroup = new THREE.Group();
@@ -296,13 +338,17 @@ export function initRobot(scene) {
   turntableOn = CONFIG.robot.turntable;
   swayOn = CONFIG.robot.sway;
 
-  scene.add(new THREE.AmbientLight(0x2a3a66, 0.7));
-  const key = new THREE.DirectionalLight(0xffd9a8, 1.4);
-  key.position.set(6, 12, 9);
-  scene.add(key);
-  const rim = new THREE.DirectionalLight(pal('cyan', CONFIG.palette.cyan), 0.8);
-  rim.position.set(-8, 6, -10);
-  scene.add(rim);
+  // R12: chassis rebuilds re-run init — lights are built once.
+  if (!lightsBuilt) {
+    scene.add(new THREE.AmbientLight(0x2a3a66, 0.7));
+    const key = new THREE.DirectionalLight(0xffd9a8, 1.4);
+    key.position.set(6, 12, 9);
+    scene.add(key);
+    const rim = new THREE.DirectionalLight(pal('cyan', CONFIG.palette.cyan), 0.8);
+    rim.position.set(-8, 6, -10);
+    scene.add(rim);
+    lightsBuilt = true;
+  }
   fireLight = new THREE.PointLight(pal('fireMid', CONFIG.palette.fireMid), 3, 30, 1.6);
   fireLight.position.set(0, 4, 4);
   robotGroup.add(fireLight);
@@ -314,6 +360,98 @@ export function initRobot(scene) {
   scene.add(robotGroup);
 
   return { group: mechGroup, getCoherence, sampleSurfacePoint };
+}
+
+// R12: chassis switching — dispose the old body, build the new one.
+export function getChassis() { return chassis; }
+export function cycleChassis() {
+  const next = CHASSIS_ORDER[(CHASSIS_ORDER.indexOf(chassis) + 1) % CHASSIS_ORDER.length];
+  setChassis(next);
+  return next;
+}
+export function setChassis(name) {
+  if (!CHASSIS[name] || name === chassis) return chassis;
+  chassis = name;
+  try { localStorage.setItem('gorf.mech.chassis.v1', name); } catch (_) { /* private mode */ }
+  if (sceneRef && robotGroup) {
+    const duelWas = isDuelOn();
+    if (duelWas) setDuel(false);
+    sceneRef.remove(robotGroup);
+    robotGroup.traverse((o) => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose());
+    });
+    initRobot(sceneRef);
+    if (duelWas) setDuel(true);
+  }
+  return chassis;
+}
+
+// R26: wear persists across sessions (throttled writes).
+export function getWear() { return wear; }
+export function addWear(x) {
+  wear = Math.min(1, Math.max(0, wear + x));
+  const now = performance.now();
+  if (now - wearSavedAt > 5000) {
+    wearSavedAt = now;
+    try { localStorage.setItem('gorf.mech.wear.v1', String(wear)); } catch (_) { /* private mode */ }
+  }
+}
+
+// R16: stereo duel — a second mech cloned from the live one. Shader
+// materials are cloned so it gets independent uniforms (own coherence);
+// standard materials stay shared. Driven by the right channel.
+let duelGroup = null, duelMats = [], duelCoherence = 1, duelPrevKick = 0;
+export function isDuelOn() { return !!duelGroup; }
+export function setDuel(on) {
+  on = !!on;
+  if (on === !!duelGroup) return on;
+  if (on) {
+    duelGroup = robotGroup.clone(true);
+    duelGroup.traverse((o) => {
+      if (o.material && o.material.uniforms) {
+        o.material = o.material.clone();
+        // Re-point color uniforms at the LIVE registry colors so the duel
+        // mech follows palette shifts instead of freezing its birth colors.
+        const u = o.material.uniforms;
+        const remap = { uCyan: 'cyan', uFireMid: 'fireMid', uFireEdge: 'fireEdge', uFire: 'fireMid' };
+        for (const [uni, key] of Object.entries(remap)) {
+          const live = getPaletteColor(key);
+          if (u[uni] && live) u[uni].value = live;
+        }
+        duelMats.push(o.material);
+      }
+    });
+    duelGroup.position.x = 8.5;
+    duelGroup.rotation.y = -0.5;
+    sceneRef.add(duelGroup);
+  } else {
+    sceneRef.remove(duelGroup);
+    duelGroup.traverse((o) => {
+      if (o.material && o.material.uniforms) o.material.dispose();
+    });
+    duelGroup = null;
+    duelMats = [];
+    duelCoherence = 1;
+  }
+  return on;
+}
+
+// drive = { energy, kick } derived from the right channel (see main.js).
+export function updateDuel(dt, t, drive) {
+  if (!duelGroup) return;
+  const kickEdge = drive.kick > 0.6 && duelPrevKick <= 0.6;
+  duelPrevKick = drive.kick;
+  if (kickEdge) duelCoherence = 1;
+  else duelCoherence = Math.max(0, duelCoherence - dt * CONFIG.robot.coherenceDecay * 1.15);
+  for (const m of duelMats) {
+    if (m.uniforms.uCoherence) m.uniforms.uCoherence.value = duelCoherence;
+    if (m.uniforms.uTime) m.uniforms.uTime.value = t;
+    if (m.uniforms.uHeat) m.uniforms.uHeat.value = drive.heat;
+    if (m.uniforms.uMid) m.uniforms.uMid.value = drive.mid;
+  }
+  duelGroup.rotation.y += dt * CONFIG.robot.turntableSpeed * 0.8;
+  duelGroup.position.y = Math.sin(t * 0.9 + 2.0) * 0.1;
 }
 
 export function getCoherence() {
@@ -404,9 +542,18 @@ export function updateRobot(dt, audioState) {
   headGroup.rotation.x = headTiltX;
 
   // Idle breathing: subtle scale oscillation, stronger with no source.
+  // R12: chassis proportions ride along with the breathing scale.
   const breathe = 1 + Math.sin(t * 1.4) * 0.012 * (live ? 0.4 : 1.0);
-  mechGroup.scale.setScalar(breathe);
+  const V = CHASSIS[chassis];
+  mechGroup.scale.set(V.s * V.w * breathe, V.s * V.h * breathe, V.s * V.w * breathe);
   mechGroup.position.y = Math.sin(t * 0.9) * 0.1;
+
+  // R12: seraph wing flap, stronger with the mids.
+  if (wingL) {
+    const flap = Math.sin(t * 2.1) * (0.22 + midS * 0.3);
+    wingL.rotation.y = -0.55 - flap;
+    wingR.rotation.y = 0.55 + flap;
+  }
 
   for (const m of [pointsMat, wireMat]) {
     m.uniforms.uTime.value = t;
