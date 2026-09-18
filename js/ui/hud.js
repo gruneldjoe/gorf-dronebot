@@ -17,7 +17,8 @@ export function initHUD() {
     <div class="meter"><label>SUB</label><div class="bar"><div class="fill" id="m-sub"></div></div></div>
     <div class="meter"><label>MID</label><div class="bar"><div class="fill" id="m-mid"></div></div></div>
     <div class="meter"><label>HIGH</label><div class="bar"><div class="fill" id="m-high"></div></div></div>
-    <div class="meter"><label>HEAT</label><input type="range" id="heat-slider" min="0" max="1" step="0.01" value="0.25"></div>
+    <div class="meter"><label>HEAT</label><input type="range" id="heat-slider" min="0" max="1" step="0.01" value="0.25"><button id="crowd-toggle" title="crowd mode: audience noise raises HEAT">CROWD</button></div>
+    <div class="meter"><label>ODRIVE</label><div class="bar"><div class="fill" id="m-odrive"></div></div><span class="dim">X detonates</span></div>
     <div class="meter"><label>SRC</label><button id="src-file">FILE</button><button id="src-mic">MIC</button><button id="src-stop">STOP</button></div>
     <div class="meter"><label>DEMO</label><select id="demo-select"><option value="">-- pick --</option></select><span id="beat-dot">●</span></div>
     <div class="meter"><label>LINE</label><select id="src-line"><option value="">-- select --</option></select></div>
@@ -25,9 +26,11 @@ export function initHUD() {
     <div class="meter"><label>SWAY</label><button id="sway-toggle">ON</button></div>
     <div class="meter"><label>CRT</label><button id="crt-toggle">OFF</button></div>
     <div class="meter"><label>FX</label><button id="fx-shockwaves">RINGS</button><button id="fx-punch">PUNCH</button><button id="fx-sun">SUN</button></div>
+    <div class="meter"><label>MODE</label><button id="key-toggle" title="key-follow: palette breathes with the music">KEY</button><button id="dir-toggle" title="auto-director: concert-film camera cuts">DIR</button><button id="duel-toggle" title="stereo duel: a second mech battles for the right channel">DUEL</button><button id="mech-cycle" title="cycle mech chassis">MECH</button></div>
+    <div class="meter"><label>LIB</label><select id="lib-select"><option value="">-- library --</option></select><button id="lib-add" title="add audio files to the library">ADD</button><button id="lib-set" title="save current palette+heat as this track's preset">SET</button></div>
     <div class="meter"><label>MIDI</label><select id="midi-device"><option value="">-- no midi --</option></select><span id="midi-status" class="dim">off</span></div>
     <div class="meter"><label>TRIG</label><button data-trig="erupt" title="click: fire · shift+click: MIDI learn">ERUPT</button><button data-trig="punch" title="click: fire · shift+click: MIDI learn">PUNCH</button><button data-trig="palette" title="click: fire · shift+click: MIDI learn">PAL</button><button data-trig="crt" title="click: fire · shift+click: MIDI learn">CRT</button></div>
-    <div class="meter"><label>REC</label><button id="rec-toggle">● REC</button><span id="rec-timer"></span><label class="chk">1080p <input type="checkbox" id="rec-1080"></label></div>
+    <div class="meter"><label>REC</label><button id="rec-toggle">● REC</button><span id="rec-timer"></span><label class="chk">1080p <input type="checkbox" id="rec-1080"></label><label class="chk">9:16 <input type="checkbox" id="rec-916"></label><button id="photo-btn" title="photo mode: freeze + hi-res still (O)">PIC</button><button id="gif-btn" title="GIF burst: 6 second loop (G)">GIF</button></div>
     <div class="meter"><label>QUALITY</label><select id="quality-select"><option value="auto">AUTO</option><option value="high">HIGH</option><option value="med">MED</option><option value="low">LOW</option></select></div>
     <div class="hint">[H] hud &nbsp; [T] spin &nbsp; [C] crt &nbsp; [?] help &nbsp; <span id="src-name">no source</span> &nbsp;·&nbsp; <span id="sec-label">verse</span></div>
   `;
@@ -53,6 +56,25 @@ export function getMidiUI() {
     deviceSelect: panelEl.querySelector('#midi-device'),
     statusEl: panelEl.querySelector('#midi-status'),
     trigBtns: [...panelEl.querySelectorAll('[data-trig]')],
+  };
+}
+
+// R12-R27: post-MVP mode/export/library elements for main.js to wire.
+export function getPostUI() {
+  const q = (s) => panelEl.querySelector(s);
+  return {
+    keyBtn: q('#key-toggle'),
+    crowdBtn: q('#crowd-toggle'),
+    dirBtn: q('#dir-toggle'),
+    duelBtn: q('#duel-toggle'),
+    mechBtn: q('#mech-cycle'),
+    odriveFill: q('#m-odrive'),
+    libSelect: q('#lib-select'),
+    libAdd: q('#lib-add'),
+    libSet: q('#lib-set'),
+    photoBtn: q('#photo-btn'),
+    gifBtn: q('#gif-btn'),
+    v916: q('#rec-916'),
   };
 }
 

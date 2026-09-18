@@ -29,6 +29,13 @@ let detector = null;
 let currentNodes = [];   // disconnected on source switch
 let currentStream = null;
 let sourceName = 'none';
+// R16: stereo duel — per-channel analysers fed by a splitter (tapped in
+// parallel; the main mono analyser path is untouched).
+let splitter = null, analyserL = null, analyserR = null;
+let freqL = null, freqR = null;
+const stereo = { l: 0, r: 0 };
+// R15: bullet-time — buffer sources we can pitch-drop with playbackRate.
+let playSources = [];
 // Time-based section tracking for demo tracks (step 21). The detector's
 // audio-guessed section is overridden when a demo is playing.
 let activeDemo = null;   // DEMO_TRACKS entry, or null for file/mic/line
@@ -40,6 +47,7 @@ const bands = {
   sub: { fLo: 20, fHi: 120, lo: 1, hi: 5, peak: 0.02, val: 0 },
   mid: { fLo: 120, fHi: 2000, lo: 6, hi: 85, peak: 0.02, val: 0 },
   high: { fLo: 2000, fHi: 20000, lo: 86, hi: 1023, peak: 0.02, val: 0 },
+  vox: { fLo: 2000, fHi: 6000, lo: 86, hi: 300, peak: 0.02, val: 0 }, // R19: presence band
 };
 
 async function ensureCtx() {
@@ -70,6 +78,19 @@ async function ensureCtx() {
   const [subLo, subHi] = [bands.sub.lo, bands.sub.hi];
   const [midLo, midHi] = [bands.mid.lo, bands.mid.hi];
   detector = createDetector({ subLo, subHi, snrLo, snrHi, midLo, midHi });
+
+  // R16: stereo tap — parallel to the mono path, never in it.
+  splitter = ctx.createChannelSplitter(2);
+  analyserL = ctx.createAnalyser();
+  analyserR = ctx.createAnalyser();
+  analyserL.fftSize = 512;
+  analyserR.fftSize = 512;
+  analyserL.smoothingTimeConstant = 0;
+  analyserR.smoothingTimeConstant = 0;
+  freqL = new Uint8Array(analyserL.frequencyBinCount);
+  freqR = new Uint8Array(analyserR.frequencyBinCount);
+  splitter.connect(analyserL, 0);
+  splitter.connect(analyserR, 1);
 }
 
 function disconnectCurrent(opts = {}) {
@@ -82,6 +103,7 @@ function disconnectCurrent(opts = {}) {
     } catch (_) { /* already disconnected */ }
   }
   currentNodes = [];
+  playSources = []; // R15
   if (currentStream) {
     currentStream.getTracks().forEach((t) => t.stop());
     currentStream = null;
@@ -111,6 +133,7 @@ async function playBuffer(audioBuf, name, opts = {}) {
   src.buffer = audioBuf;
   src.loop = true;
   src.connect(analyser);
+  if (splitter) src.connect(splitter); // R16: stereo tap
   src.start();
   if (activeDemo) demoT0 = ctx.currentTime;
   const t2 = ctx.currentTime;
@@ -118,6 +141,7 @@ async function playBuffer(audioBuf, name, opts = {}) {
   monitorGain.gain.setValueAtTime(0.0001, t2);
   monitorGain.gain.linearRampToValueAtTime(1, t2 + 0.15); // audible
   currentNodes = [src];
+  playSources = [src]; // R15: bullet-time pitch control
   sourceName = name;
 }
 
@@ -135,10 +159,15 @@ export async function useDemo(n) {
 
 export async function useFile(file) {
   activeDemo = null; // back to audio-guessed sections
-  const buf = await file.arrayBuffer();
+  await useBlob(await file.arrayBuffer(), `file: ${file.name.slice(0, 24)}`);
+}
+
+// R18: personal track library — play a stored blob through the same path.
+export async function useBlob(buf, name) {
+  activeDemo = null;
   await ensureCtx();
-  const audioBuf = await ctx.decodeAudioData(buf);
-  await playBuffer(audioBuf, `file: ${file.name.slice(0, 24)}`);
+  const audioBuf = await ctx.decodeAudioData(buf.slice(0));
+  await playBuffer(audioBuf, name);
 }
 
 async function useStream(stream, name) {
@@ -146,6 +175,7 @@ async function useStream(stream, name) {
   disconnectCurrent();
   const src = ctx.createMediaStreamSource(stream);
   src.connect(analyser);
+  if (splitter) src.connect(splitter); // R16: stereo tap
   monitorGain.gain.cancelScheduledValues(ctx.currentTime);
   monitorGain.gain.value = 0; // analyser only — no feedback
   currentNodes = [src];
@@ -191,6 +221,16 @@ export async function listInputDevices() {
   return all.filter((d) => d.kind === 'audioinput');
 }
 
+// R15: bullet-time pitch drop for buffer sources (demo/file). Streams ignore it.
+export function setPlaybackRate(r) {
+  for (const s of playSources) {
+    try { s.playbackRate.value = r; } catch (_) { /* gone */ }
+  }
+}
+
+// R16: smoothed per-channel energies for the stereo duel.
+export function getStereo() { return stereo; }
+
 // Fill state with live analysis (or zeros when no source is active).
 export function updateAudio(dt, state) {
   state.live = currentNodes.length > 0;
@@ -198,14 +238,18 @@ export function updateAudio(dt, state) {
     state.sub = 0;
     state.mid = 0;
     state.high = 0;
+    state.vox = 0;
     state.energy = 0;
     state.kick = 0;
     state.snare = 0;
+    state.centroid = 0;
     state.section = 'verse';
+    stereo.l = 0;
+    stereo.r = 0;
     return;
   }
   analyser.getByteFrequencyData(freqData);
-  for (const k of ['sub', 'mid', 'high']) {
+  for (const k of ['sub', 'mid', 'high', 'vox']) {
     const b = bands[k];
     let sum = 0;
     for (let i = b.lo; i <= b.hi; i++) sum += freqData[i];
@@ -219,6 +263,27 @@ export function updateAudio(dt, state) {
     state[k] = Math.min(1, Math.max(0, b.val));
   }
   detector.update(freqData, dt, state);
+  // R20: spectral centroid 0..1 — key-follow input.
+  let wsum = 0, fsum = 0;
+  for (let i = 1; i < freqData.length; i += 2) {
+    const v = freqData[i] / 255;
+    wsum += v;
+    fsum += v * i;
+  }
+  const cTarget = wsum > 0.05 ? (fsum / wsum) / freqData.length : 0;
+  state.centroid = (state.centroid || 0) + (cTarget - (state.centroid || 0)) * Math.min(1, dt * 2);
+  // R16: per-channel energy for the duel.
+  if (analyserL && freqL) {
+    analyserL.getByteFrequencyData(freqL);
+    analyserR.getByteFrequencyData(freqR);
+    let sl = 0, sr = 0;
+    for (let i = 1; i < freqL.length; i++) { sl += freqL[i]; sr += freqR[i]; }
+    sl = sl / freqL.length / 255;
+    sr = sr / freqR.length / 255;
+    const k = Math.min(1, dt * 4);
+    stereo.l += (sl - stereo.l) * k;
+    stereo.r += (sr - stereo.r) * k;
+  }
   // Demo tracks: section from the audio clock, not from guessing.
   // The buffer is 16 bars + 1s tail; the tail reads as outro ('O'→'verse').
   if (activeDemo && demoT0 > 0) {

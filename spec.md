@@ -128,6 +128,36 @@ The *feeling* of a SNES game, translated, not literal pixels:
   default on. (Dan, 2026-09-17)
 - R11. Sway toggle: HUD button to enable/disable the mid-driven torso sway.
   Default on. (Dan, 2026-09-17)
+- R12. Mech chassis variants: selectable procedural robot bodies — scout,
+  brute, seraph — same ghost soul, different silhouettes. (Dan, 2026-09-18)
+- R13. Performance mode: one-key fullscreen ritual, every pixel of UI
+  hidden. (Dan, 2026-09-18)
+- R14. Auto-director: the camera cuts like a concert film, driven by
+  section changes. (Dan, 2026-09-18)
+- R15. Bullet-time trigger: brief slow-motion dilation on demand.
+  (Dan, 2026-09-18)
+- R16. Stereo duel: two mechs, left channel vs right channel, battling
+  for coherence. (Dan, 2026-09-18)
+- R17. Day/night cycle: the sun sets into a moon across a long set.
+  (Dan, 2026-09-18)
+- R18. Personal track library: Dan's own music, with metadata/artwork and
+  per-track visual presets, persisted locally. (Dan, 2026-09-18)
+- R19. Stem-reactive mapping: kick drives coherence, snare drives jets,
+  vox (presence band) drives the sun. True stems where available,
+  band-approximated otherwise. (Dan, 2026-09-18)
+- R20. Key-follow: the palette breathes with the musical key (spectral
+  centroid → palette selection). (Dan, 2026-09-18)
+- R21. Vertical 9:16 export crop for Shorts/TikTok. (Dan, 2026-09-18)
+- R22. GIF burst: one trigger, six seconds, straight to a looped GIF.
+  (Dan, 2026-09-18)
+- R23. Photo mode: freeze frame, hide UI, hi-res still download.
+  (Dan, 2026-09-18)
+- R24. OVERDRIVE meter: room energy (mic) fills it; full meter detonates
+  a frame-whiting mega-eruption. (Dan, 2026-09-18)
+- R25. Crowd mode: audience noise raises the HEAT bias. (Dan, 2026-09-18)
+- R26. Persistent mech: scorch/wear carries across sessions (localStorage).
+  It remembers. (Dan, 2026-09-18)
+- R27. Konami code easter egg. (Dan, 2026-09-18)
 
 ## 9. Open questions (resolved 2026-09-17)
 
@@ -180,6 +210,10 @@ visuals (step 17 — MIDI learn + triggers). Remaining / new ideas:
   new toggle, new source, new effect, changed default — updates the
   `Functionality` section of `README.md` in the same commit. If the
   README doesn't describe it, it didn't happen.
+- **Ship rhythm.** Push to `main` every 3 commits. `post-mvp` is the
+  workbench; `main` stays demo-ready. Count commits since the last main
+  push — on every third commit, push the working tree to both `post-mvp`
+  and `main`.
 - **Button-state pattern.** HUD buttons come in two flavors, and they must
   never be confused:
   - *Toggle buttons* (SPIN, SWAY, CRT, FX RINGS/PUNCH/SUN, …) carry the
@@ -236,3 +270,18 @@ requirements.
 - Persistent mech: the robot remembers — scorch marks and dents carry
   across sessions.
 - Konami code. You know what it does.
+
+## 15. Potential future improvements
+
+Not requirements — parked ideas, no commitment. The Performance/DJ set
+lives here until the gig demands it.
+
+**Performance / DJ**
+- Full DDJ-FLX10 factory mapping — pads become detonation buttons, knobs
+  ride the HEAT and bloom, jog wheel orbits the camera.
+- Loop-roll shatter — hold a loop in Rekordbox and the eruptions escalate
+  until you let go.
+- NDI/Syphon out to Resolume — the robot as a live visual instrument in
+  a real VJ rig.
+- Setlist mode — queue tracks, visuals crossfade themselves between songs.
+- Gig profile vs studio profile — one tap, whole rig reconfigures.
