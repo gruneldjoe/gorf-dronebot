@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
-import { initBackground, updateBackground } from './scene/background.js';
-import { initRobot, updateRobot, setTurntable, isTurntableOn, setSway, isSwayOn, snapCoherence, shatterCoherence } from './scene/robot.js';
+import { initBackground, updateBackground, addVoxSwell } from './scene/background.js';
+import { initRobot, updateRobot, setTurntable, isTurntableOn, setSway, isSwayOn, snapCoherence, shatterCoherence, getChassis, cycleChassis, setDuel, isDuelOn, updateDuel, addWear } from './scene/robot.js';
 import { initEmbers, updateEmbers } from './scene/embers.js';
 import { initJets, updateJets, triggerEruption } from './scene/jets.js';
 import { initPost, onPostResize, updatePost, setCrt, isCrtOn, getBloomPass } from './post/fx.js';
@@ -9,16 +9,18 @@ import { initQuality, updateQuality, setQualityMode } from './post/quality.js';
 import { initTitle, dismissTitle, isTitleUp } from './ui/title.js';
 import { initHelp, toggleHelp } from './ui/help.js';
 import { initEffects, updateEffects, setEffect, isEffectOn, spawnShockwave } from './scene/effects.js';
-import { initCamera, updateCamera } from './scene/camera.js';
-import { registerPaletteColor } from './scene/palette.js';
-import { initHUD, updateHUD, toggleHUD, getSourceUI, getMidiUI, getRecorderUI, refreshLineInputs, setSourceName } from './ui/hud.js';
+import { initCamera, updateCamera, directorCut } from './scene/camera.js';
+import { registerPaletteColor, applyPalette, currentPalette, PALETTE_ORDER, cyclePalette } from './scene/palette.js';
+import { initHUD, updateHUD, toggleHUD, getSourceUI, getMidiUI, getRecorderUI, getPostUI, refreshLineInputs, setSourceName } from './ui/hud.js';
 import { initMidi, armLearn, cancelLearn, isLearning, getBinding, describeBinding } from './input/midi.js';
 import { initRecorder, startRecording, stopRecording, isRecording } from './input/recorder.js';
-import { cyclePalette } from './scene/palette.js';
 import { punchCamera } from './scene/effects.js';
+import { captureGif } from './input/gif.js';
+import { addFiles, listTracks, getTrack, updatePreset } from './input/library.js';
 import {
-  useDemo, useFile, useMic, useLine, stopSource, DEMO_TRACKS,
+  useDemo, useFile, useBlob, useMic, useLine, stopSource, DEMO_TRACKS,
   listInputDevices, updateAudio, getSourceName, getRecordStream,
+  getStereo, setPlaybackRate,
 } from './audio/engine.js';
 
 // --- Renderer ---
@@ -136,6 +138,7 @@ function toggleFullscreen() {
 }
 window.addEventListener('keydown', (e) => {
   if (isTitleUp()) return; // title screen owns the keyboard until dismissed
+  trackKonami(e.key); // R27 — runs for every key, alongside the rest
   if (e.key === 'h' || e.key === 'H') toggleHUD();
   else if (e.key === 't' || e.key === 'T') toggleSpin();
   else if (e.key === 'c' || e.key === 'C') toggleCrt();
@@ -143,6 +146,11 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === ' ') { e.preventDefault(); snapCoherence(); triggerEruption(1); }
   else if (e.key === '?') toggleHelp();
   else if (e.key >= '1' && e.key <= '4') playDemo(parseInt(e.key, 10));
+  else if (e.key === 'p' || e.key === 'P') togglePerfMode(); // R13
+  else if (e.key === 'o' || e.key === 'O') takePhoto(); // R23
+  else if (e.key === 'g' || e.key === 'G') fireGif(); // R22
+  else if (e.key === 'b' || e.key === 'B') fireBulletTime(); // R15
+  else if (e.key === 'x' || e.key === 'X') detonateOverdrive(); // R24
   else if (e.key === 'm' || e.key === 'M') { // step 17: arm MIDI learn for ERUPT (M again cancels)
     if (isLearning('erupt')) cancelLearn(); else armLearn('erupt');
     refreshTrigBtns();
@@ -244,9 +252,10 @@ initMidi({
 
 // --- Step 18: Recorder ---
 const recUI = getRecorderUI();
-function setRecordSize(hd) {
-  const w = hd ? 1920 : window.innerWidth;
-  const h = hd ? 1080 : window.innerHeight;
+function setRecordSize() {
+  let w = window.innerWidth, h = window.innerHeight;
+  if (postUI.v916.checked) { w = 1080; h = 1920; } // R21: vertical crop for Shorts/TikTok
+  else if (recUI.hd1080.checked) { w = 1920; h = 1080; }
   renderer.setSize(w, h, false); // buffer only — CSS keeps it full-window
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
@@ -268,13 +277,200 @@ initRecorder({
 async function toggleRecord() {
   if (isRecording()) {
     stopRecording();
-    setRecordSize(false);
+    setRecordSize();
   } else {
-    setRecordSize(recUI.hd1080.checked);
+    setRecordSize();
     await startRecording();
   }
 }
 recUI.recBtn.addEventListener('click', toggleRecord);
+
+// --- R12-R27: post-MVP systems ---
+const postUI = getPostUI();
+let keyFollow = false, crowdMode = false, directorOn = false;
+let crowdHeat = 0;
+let overdrive = 0; // R24: 0..1, fills with room energy
+let timeScale = 1, bulletT = 0; // R15: bullet-time
+let lastKeyEval = 0;
+let gifBusy = false;
+let perfMode = false;
+
+// R24: white-out flash for the overdrive detonation.
+function flashWhite() {
+  const f = document.getElementById('flash');
+  f.style.transition = 'none';
+  f.style.opacity = '1';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    f.style.transition = 'opacity 0.5s ease-out';
+    f.style.opacity = '0';
+  }));
+}
+
+function detonateOverdrive() {
+  if (overdrive < 0.4) return;
+  overdrive = 0;
+  shatterCoherence();
+  triggerEruption(4.0);
+  spawnShockwave(3.0);
+  punchCamera(2.0);
+  flashWhite();
+  addWear(0.05); // R26: detonations scorch the mech
+}
+
+// MODE toggles — UI pattern: short label + .on glow while ON.
+function wireModeToggle(btn, get, set) {
+  const refresh = () => btn.classList.toggle('on', !!get());
+  btn.addEventListener('click', () => { set(!get()); refresh(); });
+  refresh();
+}
+wireModeToggle(postUI.keyBtn, () => keyFollow, (v) => { keyFollow = v; });
+wireModeToggle(postUI.crowdBtn, () => crowdMode, (v) => { crowdMode = v; });
+wireModeToggle(postUI.dirBtn, () => directorOn, (v) => { directorOn = v; });
+wireModeToggle(postUI.duelBtn, () => isDuelOn(), (v) => setDuel(v));
+
+// R12: chassis cycle.
+postUI.mechBtn.title = `chassis: ${getChassis()} — click to cycle`;
+postUI.mechBtn.addEventListener('click', () => {
+  const c = cycleChassis();
+  postUI.mechBtn.title = `chassis: ${c} — click to cycle`;
+});
+
+// R18: personal track library (IndexedDB).
+const libFileInput = document.createElement('input');
+libFileInput.type = 'file';
+libFileInput.accept = 'audio/*';
+libFileInput.multiple = true;
+libFileInput.style.display = 'none';
+document.body.appendChild(libFileInput);
+async function refreshLibrary() {
+  const tracks = await listTracks().catch(() => []);
+  postUI.libSelect.innerHTML = '<option value="">-- library --</option>' +
+    tracks.map((t) => `<option value="${t.id}">${t.name}</option>`).join('');
+}
+postUI.libAdd.addEventListener('click', () => libFileInput.click());
+libFileInput.addEventListener('change', async () => {
+  const added = await addFiles([...libFileInput.files]).catch(() => []);
+  libFileInput.value = '';
+  await refreshLibrary();
+  if (added.length) setSourceName(`library: +${added.length} track(s)`);
+});
+postUI.libSelect.addEventListener('change', async () => {
+  const id = parseInt(postUI.libSelect.value, 10);
+  if (!id) return;
+  const rec = await getTrack(id).catch(() => null);
+  if (!rec) return;
+  const buf = await rec.blob.arrayBuffer();
+  if (await selectSource(() => useBlob(buf, `library: ${rec.name}`))) {
+    if (rec.palette) applyPalette(rec.palette);
+    if (rec.heat != null) {
+      const hs = document.getElementById('heat-slider');
+      if (hs) hs.value = rec.heat;
+    }
+    dismissTitle();
+  }
+});
+postUI.libSet.addEventListener('click', async () => {
+  const id = parseInt(postUI.libSelect.value, 10);
+  if (!id) return;
+  const hs = document.getElementById('heat-slider');
+  await updatePreset(id, {
+    palette: currentPalette(),
+    heat: hs ? parseFloat(hs.value) : 0.25,
+  }).catch(() => {});
+  setSourceName('preset saved');
+});
+refreshLibrary();
+
+// R23: photo mode — hide UI, render 2x, download a still.
+function takePhoto() {
+  const hud = document.getElementById('hud');
+  const wasHidden = hud.style.display === 'none';
+  hud.style.display = 'none';
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w * 2, h * 2, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  onPostResize();
+  composer.render();
+  const url = renderer.domElement.toDataURL('image/png');
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  onPostResize();
+  if (!wasHidden) hud.style.display = '';
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `gorf-dronebot-${Date.now()}.png`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => document.body.removeChild(a), 2000);
+}
+postUI.photoBtn.addEventListener('click', takePhoto);
+
+// R22: GIF burst — 6 seconds at 12fps, 320px wide, looped.
+function fireGif() {
+  if (gifBusy) return;
+  gifBusy = true;
+  postUI.gifBtn.classList.add('on');
+  setSourceName('capturing GIF…');
+  captureGif({
+    canvas: renderer.domElement, seconds: 6, fps: 12, width: 320,
+    onDone: (blob) => {
+      gifBusy = false;
+      postUI.gifBtn.classList.remove('on');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `gorf-dronebot-${Date.now()}.gif`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 4000);
+      setSourceName(getSourceName());
+    },
+  });
+}
+postUI.gifBtn.addEventListener('click', fireGif);
+
+// R15: bullet-time — visual slow-mo + pitch drop on buffer sources.
+function fireBulletTime() {
+  if (bulletT > 0) return;
+  bulletT = 2.2;
+  timeScale = 0.22;
+  setPlaybackRate(0.5);
+}
+
+// R13: performance mode — fullscreen ritual, every pixel of UI gone.
+function togglePerfMode() {
+  perfMode = !perfMode;
+  const hud = document.getElementById('hud');
+  if (perfMode) {
+    hud.style.display = 'none';
+    document.body.classList.add('perfhide');
+    document.documentElement.requestFullscreen().catch(() => {});
+  } else {
+    hud.style.display = '';
+    document.body.classList.remove('perfhide');
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  }
+}
+
+// R27: Konami code. You know what it does.
+const KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+let konamiIdx = 0;
+function trackKonami(key) {
+  if (key === KONAMI[konamiIdx]) {
+    konamiIdx++;
+    if (konamiIdx === KONAMI.length) {
+      konamiIdx = 0;
+      applyPalette('ultraviolet');
+      overdrive = 1;
+      detonateOverdrive();
+      setSourceName('KONAMI // OVERDRIVE');
+    }
+  } else {
+    konamiIdx = key === KONAMI[0] ? 1 : 0;
+  }
+}
 
 // --- Title screen (step 14): HUD stays hidden until a source is picked.
 const hudEl = document.getElementById('hud');
@@ -307,7 +503,15 @@ const clock = new THREE.Clock();
 
 function tick() {
   requestAnimationFrame(tick);
-  const dt = Math.min(clock.getDelta(), 0.05);
+  const rawDt = Math.min(clock.getDelta(), 0.05);
+  // R15: bullet-time — ease the time scale back to 1 as the effect ends.
+  if (bulletT > 0) {
+    bulletT -= rawDt;
+    const k = Math.max(0, bulletT / 2.2);
+    timeScale = 0.22 + 0.78 * (1 - k * k);
+    if (bulletT <= 0) { timeScale = 1; setPlaybackRate(1); }
+  }
+  const dt = Math.min(rawDt * timeScale, 0.05);
   const t = clock.elapsedTime;
 
   // Live FFT analysis → sub/mid/high/kick/snare/energy/section.
@@ -317,15 +521,22 @@ function tick() {
   audioState.pulse = Math.pow(Math.sin(t * 2.2) * 0.5 + 0.5, 2.0) * 0.35;
   const heatSlider = document.getElementById('heat-slider');
   audioState.heat = heatSlider ? parseFloat(heatSlider.value) : 0.25;
+  // R25: crowd mode — audience noise raises the HEAT bias.
+  const crowdTarget = (crowdMode && audioState.live) ? audioState.high * 0.6 : 0;
+  crowdHeat += (crowdTarget - crowdHeat) * Math.min(1, dt * 1.5);
 
   // Step 21b: drop shatter — on section → drop transition, the ghost
   // disintegrates (coherence 0 → ember eruption), jets erupt, and a
   // max-power shockwave fires. The reform spring (robot.js) brings it back.
-  if (audioState.section === 'drop' && prevSection !== 'drop') {
-    shatterCoherence();
-    triggerEruption(2.0);
-    spawnShockwave(2.0);
-    audioState.events.push({ type: 'shatter', strength: 2.0 });
+  if (audioState.section !== prevSection) {
+    if (directorOn) directorCut(); // R14: concert-film cut on section change
+    if (audioState.section === 'drop') {
+      shatterCoherence();
+      triggerEruption(2.0);
+      spawnShockwave(2.0);
+      audioState.events.push({ type: 'shatter', strength: 2.0 });
+      addWear(0.03); // R26: drops scorch the mech
+    }
   }
   prevSection = audioState.section;
 
@@ -335,8 +546,34 @@ function tick() {
   const gradeTarget = audioState.section === 'drop' ? g.drop
     : audioState.section === 'build' ? g.build : g.verse;
   audioState.grade += (gradeTarget - audioState.grade) * Math.min(1, dt * g.lerpRate);
-  audioState.sceneHeat = Math.min(1, Math.max(audioState.heat, audioState.grade * g.sectionBoost));
+  audioState.sceneHeat = Math.min(1, Math.max(audioState.heat, audioState.grade * g.sectionBoost, crowdHeat));
   scene.fog.density = g.fogBase + audioState.sceneHeat * g.fogGain;
+
+  // R24: OVERDRIVE fills with room energy; a full meter detonates itself.
+  if (audioState.live) overdrive = Math.min(1, overdrive + (audioState.high * 0.22 + audioState.vox * 0.14) * dt);
+  overdrive = Math.max(0, overdrive - dt * 0.03);
+  if (overdrive >= 1) detonateOverdrive();
+  postUI.odriveFill.style.width = `${Math.round(overdrive * 100)}%`;
+
+  // R20: key-follow — the palette breathes with the spectral centroid.
+  if (keyFollow && audioState.live && t - lastKeyEval > 4) {
+    lastKeyEval = t;
+    const want = PALETTE_ORDER[Math.min(3, Math.floor((audioState.centroid || 0) * 4))];
+    if (want !== currentPalette()) applyPalette(want);
+  }
+
+  addVoxSwell(audioState.vox || 0); // R19: presence band breathes the sun
+
+  // R16: stereo duel — the second mech battles for the right channel.
+  if (isDuelOn()) {
+    const s = getStereo();
+    const bal = s.r / (s.l + s.r + 0.001);
+    updateDuel(dt, t, {
+      kick: audioState.kick * (0.35 + 0.65 * bal),
+      heat: audioState.sceneHeat,
+      mid: audioState.mid * (0.5 + bal),
+    });
+  }
 
   updateBackground(scene, dt, audioState);
   updateRobot(dt, audioState);
