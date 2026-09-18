@@ -1,14 +1,14 @@
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
 import { initBackground, updateBackground } from './scene/background.js';
-import { initRobot, updateRobot, setTurntable, isTurntableOn, setSway, isSwayOn, snapCoherence } from './scene/robot.js';
+import { initRobot, updateRobot, setTurntable, isTurntableOn, setSway, isSwayOn, snapCoherence, shatterCoherence } from './scene/robot.js';
 import { initEmbers, updateEmbers } from './scene/embers.js';
 import { initJets, updateJets, triggerEruption } from './scene/jets.js';
 import { initPost, onPostResize, updatePost, setCrt, isCrtOn, getBloomPass } from './post/fx.js';
 import { initQuality, updateQuality, setQualityMode } from './post/quality.js';
 import { initTitle, dismissTitle, isTitleUp } from './ui/title.js';
 import { initHelp, toggleHelp } from './ui/help.js';
-import { initEffects, updateEffects, setEffect, isEffectOn } from './scene/effects.js';
+import { initEffects, updateEffects, setEffect, isEffectOn, spawnShockwave } from './scene/effects.js';
 import { initCamera, updateCamera } from './scene/camera.js';
 import { initHUD, updateHUD, toggleHUD, getSourceUI, refreshLineInputs, setSourceName } from './ui/hud.js';
 import {
@@ -65,6 +65,9 @@ const audioState = {
   pulse: 0,    // 0..1 sun pulse
   events: [],  // per-frame beat events (robot pushes, effects consumes)
 };
+
+// Step 21b: track section transitions for the drop shatter.
+let prevSection = 'verse';
 
 // --- Audio source wiring ---
 const srcUI = getSourceUI();
@@ -209,6 +212,17 @@ function tick() {
   audioState.pulse = Math.pow(Math.sin(t * 2.2) * 0.5 + 0.5, 2.0) * 0.35;
   const heatSlider = document.getElementById('heat-slider');
   audioState.heat = heatSlider ? parseFloat(heatSlider.value) : 0.25;
+
+  // Step 21b: drop shatter — on section → drop transition, the ghost
+  // disintegrates (coherence 0 → ember eruption), jets erupt, and a
+  // max-power shockwave fires. The reform spring (robot.js) brings it back.
+  if (audioState.section === 'drop' && prevSection !== 'drop') {
+    shatterCoherence();
+    triggerEruption(2.0);
+    spawnShockwave(2.0);
+    audioState.events.push({ type: 'shatter', strength: 2.0 });
+  }
+  prevSection = audioState.section;
 
   // Step 12: section grade lerps toward its target (~2s, no pops); the
   // slider stays authoritative — the grade can only push heat up.

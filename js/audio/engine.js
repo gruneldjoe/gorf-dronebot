@@ -8,10 +8,17 @@
 import { createDetector } from './detect.js';
 
 export const DEMO_TRACKS = [
-  { n: 1, label: 'OVERWORLD', file: 'demo-01-overworld-run.ogg', bpm: 140, vibe: 'cheerful chiptune' },
-  { n: 2, label: 'BOSS', file: 'demo-02-boss-protocol.ogg', bpm: 160, vibe: 'aggressive boss theme' },
-  { n: 3, label: 'GLITCH', file: 'demo-03-glitch-machine.ogg', bpm: 128, vibe: 'bitcrushed glitch' },
-  { n: 4, label: 'TITLE', file: 'demo-04-title-screen.ogg', bpm: 92, vibe: 'dreamy pads' },
+  // arr: 16-bar arrangement, one section per bar. The demo player computes
+  // the section from the audio clock (step 21) — exact for composed tracks,
+  // unlike the audio-guessing detector which stays as fallback for user audio.
+  { n: 1, label: 'OVERWORLD', file: 'demo-01-overworld-run.ogg', bpm: 140, vibe: 'cheerful chiptune',
+    arr: 'VVVVBBBBDDDDOOOO' },
+  { n: 2, label: 'BOSS', file: 'demo-02-boss-protocol.ogg', bpm: 160, vibe: 'aggressive boss theme',
+    arr: 'VVVVBBBBDDDDOOOO' },
+  { n: 3, label: 'GLITCH', file: 'demo-03-glitch-machine.ogg', bpm: 128, vibe: 'bitcrushed glitch',
+    arr: 'VVVVBBBBDDDDOOOO' },
+  { n: 4, label: 'TITLE', file: 'demo-04-title-screen.ogg', bpm: 92, vibe: 'dreamy pads',
+    arr: 'VVVVVVVVBBBBBBBB' }, // gentle crest, never drops — no shatter
 ];
 
 let ctx = null;
@@ -22,6 +29,10 @@ let detector = null;
 let currentNodes = [];   // disconnected on source switch
 let currentStream = null;
 let sourceName = 'none';
+// Time-based section tracking for demo tracks (step 21). The detector's
+// audio-guessed section is overridden when a demo is playing.
+let activeDemo = null;   // DEMO_TRACKS entry, or null for file/mic/line
+let demoT0 = 0;          // ctx.currentTime when the demo buffer started
 
 // Per-band analysis state. Bin ranges are computed from the real sample rate
 // once the context exists.
@@ -57,7 +68,8 @@ async function ensureCtx() {
   }
   const [snrLo, snrHi] = range(2000, 8000);
   const [subLo, subHi] = [bands.sub.lo, bands.sub.hi];
-  detector = createDetector({ subLo, subHi, snrLo, snrHi });
+  const [midLo, midHi] = [bands.mid.lo, bands.mid.hi];
+  detector = createDetector({ subLo, subHi, snrLo, snrHi, midLo, midHi });
 }
 
 function disconnectCurrent(opts = {}) {
@@ -100,6 +112,7 @@ async function playBuffer(audioBuf, name, opts = {}) {
   src.loop = true;
   src.connect(analyser);
   src.start();
+  if (activeDemo) demoT0 = ctx.currentTime;
   const t2 = ctx.currentTime;
   monitorGain.gain.cancelScheduledValues(t2);
   monitorGain.gain.setValueAtTime(0.0001, t2);
@@ -111,6 +124,7 @@ async function playBuffer(audioBuf, name, opts = {}) {
 export async function useDemo(n) {
   const track = DEMO_TRACKS.find((t) => t.n === n);
   if (!track) return;
+  activeDemo = track;
   const res = await fetch(`assets/demo/${track.file}`);
   if (!res.ok) throw new Error(`demo fetch failed: ${res.status}`);
   const buf = await res.arrayBuffer();
@@ -120,6 +134,7 @@ export async function useDemo(n) {
 }
 
 export async function useFile(file) {
+  activeDemo = null; // back to audio-guessed sections
   const buf = await file.arrayBuffer();
   await ensureCtx();
   const audioBuf = await ctx.decodeAudioData(buf);
@@ -192,4 +207,14 @@ export function updateAudio(dt, state) {
     state[k] = Math.min(1, Math.max(0, b.val));
   }
   detector.update(freqData, dt, state);
+  // Demo tracks: section from the audio clock, not from guessing.
+  // The buffer is 16 bars + 1s tail; the tail reads as outro ('O'→'verse').
+  if (activeDemo && demoT0 > 0) {
+    const secPerBar = (60 / activeDemo.bpm) * 4;
+    const loopDur = secPerBar * 16 + 1;
+    const elapsed = (ctx.currentTime - demoT0) % loopDur;
+    const bar = Math.min(15, Math.floor(elapsed / secPerBar));
+    const s = activeDemo.arr[bar];
+    state.section = s === 'D' ? 'drop' : s === 'B' ? 'build' : 'verse';
+  }
 }

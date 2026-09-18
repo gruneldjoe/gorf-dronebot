@@ -64,6 +64,11 @@ function spawnRing(strength) {
   r.mesh.visible = true;
 }
 
+// Step 21b: drop shatter fires a max-power shockwave directly.
+export function spawnShockwave(strength = 2.0) {
+  if (flags.shockwaves) spawnRing(strength);
+}
+
 const _dir = new THREE.Vector3();
 
 export function updateEffects(dt, audioState, camera) {

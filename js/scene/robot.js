@@ -12,6 +12,9 @@ let pointsMat, wireMat, eyeMat, fireLight;
 let coherence = 1;
 let turntableOn = true; // R8: user-toggleable turntable
 let swayOn = true; // R11: user-toggleable mid-driven sway
+// Step 21b: drop shatter — reform spring timer (null when idle).
+let reformT = null;
+const REFORM_DUR = 0.9;
 // Step 9: pivot groups for head + arms (identity at build, rotated at runtime)
 let headGroup, armL, armR;
 // Step 9: audio-follow state
@@ -316,6 +319,20 @@ export function getCoherence() {
 // Step 19: manual eruption (Space) snaps the ghost back together.
 export function snapCoherence() {
   coherence = 1;
+  reformT = null;
+}
+
+// Step 21b: drop shatter. Coherence slams to 0 (embers erupt via the
+// (1-coherence) spawn rate); the ghost then springs back with an overshoot.
+export function shatterCoherence() {
+  if (reformT !== null) return; // already shattering — don't retrigger
+  coherence = 0;
+  reformT = 0;
+}
+
+function easeOutBack(t) {
+  const c1 = 1.70158, c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
 }
 
 export function sampleSurfacePoint(out) {
@@ -338,11 +355,23 @@ export function updateRobot(dt, audioState) {
   prevKick = audioState.kick;
   if (live) {
     if (kickEdge) {
-      coherence = 1;
       // Step 10: broadcast the beat so effects (shockwave, camera, sun) fire.
       if (audioState.events) audioState.events.push({ type: 'kick', strength: audioState.kick });
+      // Step 21b: during shatter-reform the spring owns coherence; kicks
+      // still broadcast but don't cut the reform short.
+      if (reformT === null) coherence = 1;
     }
-    coherence = Math.max(0, coherence - dt * CONFIG.robot.coherenceDecay);
+    if (reformT !== null) {
+      reformT += dt / REFORM_DUR;
+      if (reformT >= 1) {
+        reformT = null;
+        coherence = 1;
+      } else {
+        coherence = Math.min(1, Math.max(0, easeOutBack(reformT)));
+      }
+    } else {
+      coherence = Math.max(0, coherence - dt * CONFIG.robot.coherenceDecay);
+    }
   } else {
     const idleTarget = 0.55 + Math.sin(t * 0.8) * 0.08;
     coherence += (idleTarget - coherence) * Math.min(1, dt * 1.2);
