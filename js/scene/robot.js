@@ -373,11 +373,11 @@ export function updateRobot(dt, audioState) {
   for (const m of [pointsMat, wireMat]) {
     m.uniforms.uTime.value = t;
     m.uniforms.uCoherence.value = coherence;
-    m.uniforms.uHeat.value = audioState.heat;
+    m.uniforms.uHeat.value = audioState.sceneHeat;
     m.uniforms.uMid.value = midS;
   }
   eyeMat.uniforms.uTime.value = t;
   eyeMat.uniforms.uHigh.value = highS;
-  fireLight.intensity = 2 + audioState.heat * 9 + audioState.pulse * 20
+  fireLight.intensity = 2 + audioState.sceneHeat * 9 + audioState.pulse * 20
     + audioState.kick * 8;
 }

@@ -223,8 +223,8 @@ export function updateBackground(scene, dt, audioState) {
   // Mode-7 floor scroll + heat
   floorScroll += dt * CONFIG.floor.scrollSpeed * (0.6 + audioState.energy * 2.0);
   floorMat.uniforms.uScroll.value = floorScroll;
-  floorMat.uniforms.uHeat.value = audioState.heat;
+  floorMat.uniforms.uHeat.value = audioState.sceneHeat;
 
   // Sky warms with heat
-  skyMat.uniforms.uHeat.value = audioState.heat;
+  skyMat.uniforms.uHeat.value = audioState.sceneHeat;
 }

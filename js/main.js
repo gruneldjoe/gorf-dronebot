@@ -45,7 +45,9 @@ const audioState = {
   energy: 0, kick: 0, snare: 0,
   section: 'verse', // verse | build | drop
   time: 0,
-  heat: 0.25,  // 0 = cool indigo, 1 = inferno
+  heat: 0.25,  // 0 = cool indigo, 1 = inferno (manual slider)
+  grade: 0.15, // step 12: smoothed section grade (verse .15 / build .55 / drop 1)
+  sceneHeat: 0.25, // step 12: max(slider, grade*boost) — what shaders/fog see
   pulse: 0,    // 0..1 sun pulse
   events: [],  // per-frame beat events (robot pushes, effects consumes)
 };
@@ -141,6 +143,15 @@ function tick() {
   audioState.pulse = Math.pow(Math.sin(t * 2.2) * 0.5 + 0.5, 2.0) * 0.35;
   const heatSlider = document.getElementById('heat-slider');
   audioState.heat = heatSlider ? parseFloat(heatSlider.value) : 0.25;
+
+  // Step 12: section grade lerps toward its target (~2s, no pops); the
+  // slider stays authoritative — the grade can only push heat up.
+  const g = CONFIG.grade;
+  const gradeTarget = audioState.section === 'drop' ? g.drop
+    : audioState.section === 'build' ? g.build : g.verse;
+  audioState.grade += (gradeTarget - audioState.grade) * Math.min(1, dt * g.lerpRate);
+  audioState.sceneHeat = Math.min(1, Math.max(audioState.heat, audioState.grade * g.sectionBoost));
+  scene.fog.density = g.fogBase + audioState.sceneHeat * g.fogGain;
 
   updateBackground(scene, dt, audioState);
   updateRobot(dt, audioState);

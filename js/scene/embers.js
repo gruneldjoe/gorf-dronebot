@@ -94,7 +94,7 @@ export function initEmbers(robotApi) {
 
 export function updateEmbers(dt, audioState) {
   const coherence = getCoherenceFn();
-  const target = Math.floor(count * (1 - coherence) * (0.2 + 0.8 * audioState.heat));
+  const target = Math.floor(count * (1 - coherence) * (0.2 + 0.8 * audioState.sceneHeat));
   const t = audioState.time;
   let active = 0;
 

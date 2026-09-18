@@ -89,6 +89,12 @@ export const CONFIG = {
     spread: 0.45,         // cone spread
     snareThreshold: 0.55,
   },
+  grade: {
+    verse: 0.15, build: 0.55, drop: 1.0, // section → grade targets
+    lerpRate: 1.5,      // per second (~2s to settle, no pops)
+    sectionBoost: 0.85, // how far the grade can push scene heat up
+    fogBase: 0.006, fogGain: 0.008,      // fog density follows grade
+  },
   effects: {
     ringPool: 10,      // shockwave ring pool (step 10)
     ringLife: 0.9,     // seconds per shockwave
