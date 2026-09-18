@@ -4,6 +4,7 @@ import { initBackground, updateBackground } from './scene/background.js';
 import { initRobot, updateRobot, setTurntable, isTurntableOn, setSway, isSwayOn } from './scene/robot.js';
 import { initEmbers, updateEmbers } from './scene/embers.js';
 import { initJets, updateJets } from './scene/jets.js';
+import { initPost, onPostResize, updatePost, setCrt, isCrtOn } from './post/fx.js';
 import { initEffects, updateEffects, setEffect, isEffectOn } from './scene/effects.js';
 import { initHUD, updateHUD, toggleHUD, getSourceUI, refreshLineInputs, setSourceName } from './ui/hud.js';
 import {
@@ -37,6 +38,7 @@ initEmbers(robotApi);
 initJets(robotApi);
 initEffects(scene);
 initHUD();
+const composer = initPost(renderer, scene, camera);
 
 // Live audio analysis fills sub/mid/high/energy/kick/snare/section each frame.
 // Heat stays on the manual slider until step 12 maps it to section/energy.
@@ -87,12 +89,14 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  onPostResize();
 });
 
 // --- Keys ---
 window.addEventListener('keydown', (e) => {
   if (e.key === 'h' || e.key === 'H') toggleHUD();
   else if (e.key === 't' || e.key === 'T') toggleSpin();
+  else if (e.key === 'c' || e.key === 'C') toggleCrt();
 });
 
 // R8: turntable toggle — button + T key.
@@ -118,6 +122,18 @@ function toggleSway() {
 }
 swayBtn.addEventListener('click', toggleSway);
 refreshSwayBtn();
+
+// CRT toggle — button + C key (step 13; full shortcut map lands in step 19).
+const crtBtn = document.getElementById('crt-toggle');
+function refreshCrtBtn() {
+  crtBtn.textContent = isCrtOn() ? 'ON' : 'OFF';
+}
+function toggleCrt() {
+  setCrt(!isCrtOn());
+  refreshCrtBtn();
+}
+crtBtn.addEventListener('click', toggleCrt);
+refreshCrtBtn();
 
 // R10: per-effect toggles — shockwave rings, camera punch, sun pulse.
 for (const [id, name] of [['fx-shockwaves', 'shockwaves'], ['fx-punch', 'cameraPunch'], ['fx-sun', 'sunPulse']]) {
@@ -159,8 +175,9 @@ function tick() {
   updateEmbers(dt, audioState);
   updateJets(dt, audioState);
   updateHUD(dt, audioState);
+  updatePost(dt, audioState);
 
-  renderer.render(scene, camera);
+  composer.render();
 }
 
 tick();

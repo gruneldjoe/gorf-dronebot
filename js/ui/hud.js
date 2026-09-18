@@ -23,6 +23,7 @@ export function initHUD() {
     <div class="meter"><label>LINE</label><select id="src-line"><option value="">-- select --</option></select></div>
     <div class="meter"><label>SPIN</label><button id="spin-toggle">ON</button></div>
     <div class="meter"><label>SWAY</label><button id="sway-toggle">ON</button></div>
+    <div class="meter"><label>CRT</label><button id="crt-toggle">OFF</button></div>
     <div class="meter"><label>FX</label><button id="fx-shockwaves">RINGS</button><button id="fx-punch">PUNCH</button><button id="fx-sun">SUN</button></div>
     <div class="hint">[H] hud &nbsp; [T] spin &nbsp; <span id="src-name">no source</span> &nbsp;·&nbsp; <span id="sec-label">verse</span></div>
   `;

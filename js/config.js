@@ -107,4 +107,10 @@ export const CONFIG = {
     cameraPunch: true,
     sunPulse: true,
   },
+  post: {
+    bloomStrength: 0.55,
+    bloomRadius: 0.45,
+    bloomThreshold: 0.62,
+    crt: false, // off by default
+  },
 };
