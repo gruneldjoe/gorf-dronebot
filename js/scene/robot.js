@@ -401,9 +401,13 @@ export function addWear(x) {
   }
 }
 
-// R16: stereo duel — a second mech cloned from the live one. Shader
-// materials are cloned so it gets independent uniforms (own coherence);
-// standard materials stay shared. Driven by the right channel.
+// R16: stereo duel — a second mech cloned from the live one. Each UNIQUE
+// shader material is cloned once and shared across the duel mech (per-object
+// clones spawned dozens of redundant material instances); standard materials
+// stay shared. Lights are stripped from the clone — it borrows the scene's
+// lighting, and adding a light would force every lit material to recompile
+// its shader on toggle (that's what stalled the tab). Driven by the right
+// channel.
 let duelGroup = null, duelMats = [], duelCoherence = 1, duelPrevKick = 0;
 export function isDuelOn() { return !!duelGroup; }
 export function setDuel(on) {
@@ -411,28 +415,35 @@ export function setDuel(on) {
   if (on === !!duelGroup) return on;
   if (on) {
     duelGroup = robotGroup.clone(true);
+    const seen = new Map(); // original material -> its single duel clone
+    const deadLights = [];
+    const remap = { uCyan: 'cyan', uFireMid: 'fireMid', uFireEdge: 'fireEdge', uFire: 'fireMid' };
     duelGroup.traverse((o) => {
-      if (o.material && o.material.uniforms) {
-        o.material = o.material.clone();
-        // Re-point color uniforms at the LIVE registry colors so the duel
-        // mech follows palette shifts instead of freezing its birth colors.
-        const u = o.material.uniforms;
-        const remap = { uCyan: 'cyan', uFireMid: 'fireMid', uFireEdge: 'fireEdge', uFire: 'fireMid' };
-        for (const [uni, key] of Object.entries(remap)) {
-          const live = getPaletteColor(key);
-          if (u[uni] && live) u[uni].value = live;
+      if (o.isLight) { deadLights.push(o); return; }
+      const m = o.material;
+      if (m && !Array.isArray(m) && m.uniforms) {
+        if (!seen.has(m)) {
+          const c = m.clone();
+          // Re-point color uniforms at the LIVE registry colors so the duel
+          // mech follows palette shifts instead of freezing its birth colors.
+          const u = c.uniforms;
+          for (const [uni, key] of Object.entries(remap)) {
+            const live = getPaletteColor(key);
+            if (u[uni] && live) u[uni].value = live;
+          }
+          seen.set(m, c);
+          duelMats.push(c);
         }
-        duelMats.push(o.material);
+        o.material = seen.get(m);
       }
     });
+    for (const l of deadLights) l.parent.remove(l);
     duelGroup.position.x = 8.5;
     duelGroup.rotation.y = -0.5;
     sceneRef.add(duelGroup);
   } else {
     sceneRef.remove(duelGroup);
-    duelGroup.traverse((o) => {
-      if (o.material && o.material.uniforms) o.material.dispose();
-    });
+    for (const m of duelMats) m.dispose();
     duelGroup = null;
     duelMats = [];
     duelCoherence = 1;
