@@ -6,6 +6,13 @@ export const CONFIG = {
     far: 1200,
     pos: [0, 3.4, 15],
     lookAt: [0, 3.0, 0],
+    // Step 16: cinematography
+    driftAmp: 0.22,     // radians of azimuth drift
+    driftSpeed: 0.07,   // rad/s
+    handheld: 0.05,     // handheld noise amplitude (world units)
+    dropPush: 0.8,      // dolly factor on drop (1 = base distance)
+    reframeJitter: 0.18,// azimuth nudge (radians) on section change
+    manualIdle: 4.0,    // idle seconds before manual orbit auto-resumes
   },
   palette: {
     // Bot: near-black gunmetal so fire reads hard against it (locked call)

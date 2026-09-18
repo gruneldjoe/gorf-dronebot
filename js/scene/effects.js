@@ -8,8 +8,7 @@ import { pulseSun } from './background.js';
 // - Sun pulse: background's sun gets a decaying scale bump per kick.
 let rings = [];
 let punch = 0;
-let baseCamPos = null;
-let baseFov = 55;
+let baseFov = null;
 
 // R10: per-effect toggles, all default on.
 const flags = {
@@ -68,10 +67,7 @@ function spawnRing(strength) {
 const _dir = new THREE.Vector3();
 
 export function updateEffects(dt, audioState, camera) {
-  if (!baseCamPos) {
-    baseCamPos = camera.position.clone();
-    baseFov = camera.fov;
-  }
+  if (baseFov === null) baseFov = camera.fov;
 
   // Consume beat events broadcast by the robot module.
   for (const ev of audioState.events) {
@@ -97,16 +93,17 @@ export function updateEffects(dt, audioState, camera) {
     }
   }
 
-  // Camera punch: dolly toward the robot + FOV kick, exponential decay.
+  // Camera punch: additive dolly toward the robot + FOV kick, exponential
+  // decay. Step 16: the camera system owns the base position, so this only
+  // offsets on top each frame — no position snapping.
   punch *= Math.exp(-dt * CONFIG.effects.punchDecay);
-  if (punch > 0.001) {
+  if (flags.cameraPunch && punch > 0.001) {
     camera.getWorldDirection(_dir);
-    camera.position.copy(baseCamPos).addScaledVector(_dir, punch * CONFIG.effects.punchGain);
-    camera.fov = baseFov - punch * CONFIG.effects.fovKick;
-    camera.updateProjectionMatrix();
-  } else if (camera.fov !== baseFov) {
-    camera.position.copy(baseCamPos);
-    camera.fov = baseFov;
+    camera.position.addScaledVector(_dir, punch * CONFIG.effects.punchGain);
+  }
+  const targetFov = baseFov - (flags.cameraPunch ? punch * CONFIG.effects.fovKick : 0);
+  if (Math.abs(camera.fov - targetFov) > 0.001) {
+    camera.fov = targetFov;
     camera.updateProjectionMatrix();
   }
 }

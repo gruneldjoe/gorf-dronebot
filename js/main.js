@@ -7,6 +7,7 @@ import { initJets, updateJets } from './scene/jets.js';
 import { initPost, onPostResize, updatePost, setCrt, isCrtOn } from './post/fx.js';
 import { initTitle, dismissTitle, isTitleUp } from './ui/title.js';
 import { initEffects, updateEffects, setEffect, isEffectOn } from './scene/effects.js';
+import { initCamera, updateCamera } from './scene/camera.js';
 import { initHUD, updateHUD, toggleHUD, getSourceUI, refreshLineInputs, setSourceName } from './ui/hud.js';
 import {
   useDemo, useFile, useMic, useLine, stopSource, DEMO_TRACKS,
@@ -38,6 +39,7 @@ const robotApi = initRobot(scene);
 initEmbers(robotApi);
 initJets(robotApi);
 initEffects(scene);
+initCamera(camera, renderer.domElement);
 initHUD();
 const composer = initPost(renderer, scene, camera);
 
@@ -202,6 +204,7 @@ function tick() {
 
   updateBackground(scene, dt, audioState);
   updateRobot(dt, audioState);
+  updateCamera(dt, audioState, camera); // owns base position; punch offsets on top
   updateEffects(dt, audioState, camera);
   updateEmbers(dt, audioState);
   updateJets(dt, audioState);
