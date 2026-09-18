@@ -4,13 +4,11 @@ A burning robot audio visualizer. A wireframe ghost mech disintegrates into embe
 
 ## Run it
 
-Open `index.html` in a browser (or the Muse artifact preview). Press **START** (click/tap) — browsers require a user gesture before audio plays.
+Live at **https://gruneldjoe.github.io/gorf-dronebot/** — or open `index.html` locally.
+
+Press **START** (click/tap) — browsers require a user gesture before audio plays.
 
 Pick a demo track (keys `1`–`4`), or drop in your own audio file.
-
-> GitHub Pages is pending — the repo is private and the current plan
-> doesn't cover Pages for private repos. Make it public (or upgrade)
-> to get a live site.
 
 ## Demo tracks
 
