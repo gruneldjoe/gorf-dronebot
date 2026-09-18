@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
 import { initBackground, updateBackground } from './scene/background.js';
-import { initRobot, updateRobot, setTurntable, isTurntableOn, setSway, isSwayOn } from './scene/robot.js';
+import { initRobot, updateRobot, setTurntable, isTurntableOn, setSway, isSwayOn, snapCoherence } from './scene/robot.js';
 import { initEmbers, updateEmbers } from './scene/embers.js';
-import { initJets, updateJets } from './scene/jets.js';
+import { initJets, updateJets, triggerEruption } from './scene/jets.js';
 import { initPost, onPostResize, updatePost, setCrt, isCrtOn } from './post/fx.js';
 import { initTitle, dismissTitle, isTitleUp } from './ui/title.js';
+import { initHelp, toggleHelp } from './ui/help.js';
 import { initEffects, updateEffects, setEffect, isEffectOn } from './scene/effects.js';
 import { initCamera, updateCamera } from './scene/camera.js';
 import { initHUD, updateHUD, toggleHUD, getSourceUI, refreshLineInputs, setSourceName } from './ui/hud.js';
@@ -41,6 +42,7 @@ initJets(robotApi);
 initEffects(scene);
 initCamera(camera, renderer.domElement);
 initHUD();
+initHelp();
 const composer = initPost(renderer, scene, camera);
 
 // Live audio analysis fills sub/mid/high/energy/kick/snare/section each frame.
@@ -111,12 +113,20 @@ window.addEventListener('resize', () => {
   onPostResize();
 });
 
-// --- Keys ---
+// --- Keys (step 19) ---
+function toggleFullscreen() {
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  else document.documentElement.requestFullscreen().catch(() => {});
+}
 window.addEventListener('keydown', (e) => {
   if (isTitleUp()) return; // title screen owns the keyboard until dismissed
   if (e.key === 'h' || e.key === 'H') toggleHUD();
   else if (e.key === 't' || e.key === 'T') toggleSpin();
   else if (e.key === 'c' || e.key === 'C') toggleCrt();
+  else if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+  else if (e.key === ' ') { e.preventDefault(); snapCoherence(); triggerEruption(1); }
+  else if (e.key === '?') toggleHelp();
+  else if (e.key >= '1' && e.key <= '4') playDemo(parseInt(e.key, 10));
 });
 
 // R8: turntable toggle — button + T key.

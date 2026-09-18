@@ -128,3 +128,33 @@ html, body {
   position: absolute; bottom: 26px; font-size: 11px; color: #5a5a8a;
   letter-spacing: 0.25em;
 }
+
+/* Step 19: help overlay — field manual */
+#help {
+  position: fixed; inset: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(5, 5, 16, 0.72);
+  font-family: 'Courier New', Courier, monospace;
+}
+#help.hidden { display: none; }
+.help-card {
+  border: 2px solid #ff2a6a;
+  background: #0b0b16;
+  padding: 28px 36px;
+  min-width: 340px;
+  box-shadow: 0 0 32px #ff2a6a55, inset 0 0 24px #ff2a6a18;
+}
+.help-title {
+  color: #fff3d6; font-size: 22px; font-weight: 900; letter-spacing: 0.3em;
+  text-shadow: 0 0 14px #ff9a3c;
+}
+.help-sub { color: #2affff; font-size: 11px; letter-spacing: 0.4em; margin: 6px 0 18px; }
+.help-row {
+  display: flex; gap: 18px; align-items: baseline;
+  color: #cfd2ff; font-size: 14px; letter-spacing: 0.08em; padding: 5px 0;
+}
+.help-key {
+  min-width: 64px; color: #0b0b10; background: #ff9a3c; font-weight: 700;
+  text-align: center; padding: 2px 6px;
+}
+.help-foot { margin-top: 18px; color: #5a5a8a; font-size: 11px; letter-spacing: 0.25em; }

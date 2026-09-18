@@ -313,6 +313,11 @@ export function getCoherence() {
   return coherence;
 }
 
+// Step 19: manual eruption (Space) snaps the ghost back together.
+export function snapCoherence() {
+  coherence = 1;
+}
+
 export function sampleSurfacePoint(out) {
   return sampler.sampleToVector(out);
 }
