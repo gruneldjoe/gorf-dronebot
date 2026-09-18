@@ -70,6 +70,13 @@ html, body {
   text-shadow: inherit;
 }
 #hud button:hover { background: #1a1a4e; }
+#hud button.learning { background: #4a1040; border-color: #ff2a6a; color: #ffd6ea; animation: learnblink 0.6s steps(2) infinite; }
+@keyframes learnblink { 50% { opacity: 0.45; } }
+#hud button.bound { border-color: #9dff3c88; }
+#hud button.rec-on { background: #5a0a0a; border-color: #ff3c3c; color: #ffd6d6; }
+#hud .dim { opacity: 0.55; font-size: 11px; margin-left: 6px; }
+#hud .chk { font-size: 11px; margin-left: 6px; opacity: 0.8; }
+#hud #rec-timer { font-size: 11px; margin-left: 6px; color: #ff9a9a; min-width: 34px; display: inline-block; }
 
 #hud select {
   font: inherit;

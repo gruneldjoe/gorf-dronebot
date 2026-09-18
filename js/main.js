@@ -10,10 +10,15 @@ import { initTitle, dismissTitle, isTitleUp } from './ui/title.js';
 import { initHelp, toggleHelp } from './ui/help.js';
 import { initEffects, updateEffects, setEffect, isEffectOn, spawnShockwave } from './scene/effects.js';
 import { initCamera, updateCamera } from './scene/camera.js';
-import { initHUD, updateHUD, toggleHUD, getSourceUI, refreshLineInputs, setSourceName } from './ui/hud.js';
+import { registerPaletteColor } from './scene/palette.js';
+import { initHUD, updateHUD, toggleHUD, getSourceUI, getMidiUI, getRecorderUI, refreshLineInputs, setSourceName } from './ui/hud.js';
+import { initMidi, armLearn, cancelLearn, isLearning, getBinding, describeBinding } from './input/midi.js';
+import { initRecorder, startRecording, stopRecording, isRecording } from './input/recorder.js';
+import { cyclePalette } from './scene/palette.js';
+import { punchCamera } from './scene/effects.js';
 import {
   useDemo, useFile, useMic, useLine, stopSource, DEMO_TRACKS,
-  listInputDevices, updateAudio, getSourceName,
+  listInputDevices, updateAudio, getSourceName, getRecordStream,
 } from './audio/engine.js';
 
 // --- Renderer ---
@@ -25,6 +30,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 // --- Scene & camera ---
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(CONFIG.palette.fog, 0.008);
+registerPaletteColor('fog', scene.fog.color); // step 17: palette shift
 
 const camera = new THREE.PerspectiveCamera(
   CONFIG.camera.fov,
@@ -137,6 +143,11 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === ' ') { e.preventDefault(); snapCoherence(); triggerEruption(1); }
   else if (e.key === '?') toggleHelp();
   else if (e.key >= '1' && e.key <= '4') playDemo(parseInt(e.key, 10));
+  else if (e.key === 'm' || e.key === 'M') { // step 17: arm MIDI learn for ERUPT (M again cancels)
+    if (isLearning('erupt')) cancelLearn(); else armLearn('erupt');
+    refreshTrigBtns();
+  }
+  else if (e.key === 'r' || e.key === 'R') toggleRecord(); // step 18
 });
 
 // R8: turntable toggle — button + T key.
@@ -174,6 +185,90 @@ function toggleCrt() {
 }
 crtBtn.addEventListener('click', toggleCrt);
 refreshCrtBtn();
+
+// --- Step 17: MIDI triggers ---
+// Four mappable actions. Click a TRIG button to fire it by hand;
+// shift+click arms MIDI learn (next note/CC from the controller binds).
+function fireTrigger(action) {
+  if (action === 'erupt') { shatterCoherence(); triggerEruption(2.0); spawnShockwave(2.0); }
+  else if (action === 'punch') punchCamera(1.0);
+  else if (action === 'palette') {
+    const p = cyclePalette();
+    midiUI.statusEl.textContent = `palette: ${p}`;
+  }
+  else if (action === 'crt') toggleCrt();
+}
+
+const midiUI = getMidiUI();
+function refreshTrigBtns() {
+  for (const b of midiUI.trigBtns) {
+    const a = b.dataset.trig;
+    b.classList.toggle('learning', isLearning(a));
+    b.classList.toggle('bound', !!getBinding(a));
+    const d = describeBinding(a);
+    b.title = d === '—'
+      ? 'click: fire · shift+click: MIDI learn'
+      : `${d} · click: fire · shift+click: re-learn`;
+  }
+}
+for (const b of midiUI.trigBtns) {
+  b.addEventListener('click', (e) => {
+    const a = b.dataset.trig;
+    if (e.shiftKey) {
+      if (isLearning(a)) cancelLearn(); else armLearn(a);
+    } else {
+      if (isLearning(a)) cancelLearn();
+      fireTrigger(a);
+    }
+    refreshTrigBtns();
+  });
+}
+refreshTrigBtns();
+
+initMidi({
+  onTrigger: (action) => fireTrigger(action),
+  onStatus: (t) => { midiUI.statusEl.textContent = t; refreshTrigBtns(); },
+  onDevices: (names) => {
+    midiUI.deviceSelect.innerHTML = names.length
+      ? names.map((n, i) => `<option value="${i}"></option>`).join('')
+      : '<option value="">-- no midi --</option>';
+    [...midiUI.deviceSelect.options].forEach((o, i) => { if (names[i]) o.textContent = names[i]; });
+  },
+});
+
+// --- Step 18: Recorder ---
+const recUI = getRecorderUI();
+function setRecordSize(hd) {
+  const w = hd ? 1920 : window.innerWidth;
+  const h = hd ? 1080 : window.innerHeight;
+  renderer.setSize(w, h, false); // buffer only — CSS keeps it full-window
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  onPostResize();
+}
+initRecorder({
+  canvas,
+  getAudioStream: getRecordStream,
+  onTick: (s, rec) => {
+    const m = Math.floor(s / 60);
+    recUI.timerEl.textContent = rec ? `${m}:${String(Math.floor(s % 60)).padStart(2, '0')}` : '';
+  },
+  onState: (rec, err) => {
+    recUI.recBtn.classList.toggle('rec-on', rec);
+    recUI.recBtn.textContent = rec ? '■ STOP' : '● REC';
+    if (err) recUI.timerEl.textContent = err;
+  },
+});
+async function toggleRecord() {
+  if (isRecording()) {
+    stopRecording();
+    setRecordSize(false);
+  } else {
+    setRecordSize(recUI.hd1080.checked);
+    await startRecording();
+  }
+}
+recUI.recBtn.addEventListener('click', toggleRecord);
 
 // --- Title screen (step 14): HUD stays hidden until a source is picked.
 const hudEl = document.getElementById('hud');

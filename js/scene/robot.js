@@ -1,6 +1,10 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { SurfaceSampler } from '../util/sample.js';
+import { registerPaletteColor } from './palette.js';
+
+// Step 17: palette-shift helper — registers the live color and returns it.
+const pal = (key, hex) => registerPaletteColor(key, new THREE.Color(hex));
 
 // The mech: Gundam-chunky proportions, IG-88-inspired sensor head.
 // Rendered as a dark physical core + burning wireframe/point-cloud ghost.
@@ -59,7 +63,7 @@ function buildMech() {
   mechGroup.add(armR);
 
   const dark = new THREE.MeshStandardMaterial({
-    color: CONFIG.palette.bot, roughness: 0.5, metalness: 0.8,
+    color: pal('bot', CONFIG.palette.bot), roughness: 0.5, metalness: 0.8,
   });
   const glow = new THREE.MeshStandardMaterial({
     color: 0x140a04, emissive: 0xff5a2a, emissiveIntensity: 2.2,
@@ -148,10 +152,10 @@ function buildGhost() {
       uMid: { value: 0 },
       uSize: { value: CONFIG.robot.pointSize },
       uDisperse: { value: CONFIG.robot.disperse },
-      uCyan: { value: new THREE.Color(CONFIG.palette.cyan) },
+      uCyan: { value: pal('cyan', CONFIG.palette.cyan) },
       uWhite: { value: new THREE.Color(0xeaf6ff) },
-      uFireMid: { value: new THREE.Color(CONFIG.palette.fireMid) },
-      uFireEdge: { value: new THREE.Color(CONFIG.palette.fireEdge) },
+      uFireMid: { value: pal('fireMid', CONFIG.palette.fireMid) },
+      uFireEdge: { value: pal('fireEdge', CONFIG.palette.fireEdge) },
     },
     vertexShader: `
       ${DISPERSE_GLSL}
@@ -199,8 +203,8 @@ function buildWireframe() {
       uHeat: { value: 0 },
       uMid: { value: 0 },
       uDisperse: { value: CONFIG.robot.disperse },
-      uCyan: { value: new THREE.Color(CONFIG.palette.cyan) },
-      uFire: { value: new THREE.Color(CONFIG.palette.fireMid) },
+      uCyan: { value: pal('cyan', CONFIG.palette.cyan) },
+      uFire: { value: pal('fireMid', CONFIG.palette.fireMid) },
       uOpacity: { value: CONFIG.robot.wireOpacity },
     },
     vertexShader: `
@@ -296,10 +300,10 @@ export function initRobot(scene) {
   const key = new THREE.DirectionalLight(0xffd9a8, 1.4);
   key.position.set(6, 12, 9);
   scene.add(key);
-  const rim = new THREE.DirectionalLight(CONFIG.palette.cyan, 0.8);
+  const rim = new THREE.DirectionalLight(pal('cyan', CONFIG.palette.cyan), 0.8);
   rim.position.set(-8, 6, -10);
   scene.add(rim);
-  fireLight = new THREE.PointLight(CONFIG.palette.fireMid, 3, 30, 1.6);
+  fireLight = new THREE.PointLight(pal('fireMid', CONFIG.palette.fireMid), 3, 30, 1.6);
   fireLight.position.set(0, 4, 4);
   robotGroup.add(fireLight);
 

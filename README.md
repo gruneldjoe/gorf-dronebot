@@ -33,7 +33,18 @@ Regenerate them with `python3 tools/gen_demo_tracks.py` (needs `numpy`, outputs 
 | `H` | HUD on/off |
 | `F` | Fullscreen |
 | `T` | Turntable spin on/off |
+| `M` | MIDI learn: ERUPT (shift+click any TRIG button to learn that one) |
+| `R` | Record a `.webm` clip (HUD REC button; 1080p checkbox for export size) |
 | `?` | Field manual |
+
+### MIDI
+
+Connect a controller (DDJ-FLX10, etc.) — it shows up in the HUD's MIDI
+selector. Shift+click a TRIG button, then move a knob or hit a pad to bind
+it. Four mappable actions: **ERUPT** (drop-shatter + jets + shockwave),
+**PUNCH** (camera punch), **PAL** (cycle palette: inferno → toxic →
+glacier → ultraviolet), **CRT** (scanlines). Bindings persist in
+localStorage. Clicking a TRIG button fires it by hand.
 
 ## How it works
 

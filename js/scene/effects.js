@@ -1,6 +1,10 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { pulseSun } from './background.js';
+import { registerPaletteColor } from './palette.js';
+
+// Step 17: palette-shift helper — registers the live color and returns it.
+const pal = (key, hex) => registerPaletteColor(key, new THREE.Color(hex));
 
 // Step 10: kick-driven spectacle.
 // - Shockwave rings expand across the mode-7 floor on every kick.
@@ -33,7 +37,7 @@ export function isEffectOn(name) {
 function makeRing() {
   const geo = new THREE.RingGeometry(0.92, 1.0, 72);
   const mat = new THREE.MeshBasicMaterial({
-    color: CONFIG.palette.fireMid,
+    color: pal('fireMid', CONFIG.palette.fireMid),
     transparent: true,
     opacity: 0,
     blending: THREE.AdditiveBlending,
@@ -62,6 +66,11 @@ function spawnRing(strength) {
   r.age = 0;
   r.strength = strength;
   r.mesh.visible = true;
+}
+
+// Step 17: manual camera punch for MIDI/trigger firing.
+export function punchCamera(strength = 1.0) {
+  if (flags.cameraPunch) punch = Math.min(1.2, punch + strength);
 }
 
 // Step 21b: drop shatter fires a max-power shockwave directly.

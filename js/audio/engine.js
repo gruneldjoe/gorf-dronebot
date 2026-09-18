@@ -173,6 +173,18 @@ export function getSourceName() {
   return sourceName;
 }
 
+// Step 18: recorder tap — a MediaStreamDestination fed by the same master
+// gain that drives the speakers, so recordings capture exactly what's heard.
+let recDest = null;
+export function getRecordStream() {
+  if (!ctx || !monitorGain) return null;
+  if (!recDest) {
+    recDest = ctx.createMediaStreamDestination();
+    monitorGain.connect(recDest);
+  }
+  return recDest.stream;
+}
+
 export async function listInputDevices() {
   if (!navigator.mediaDevices?.enumerateDevices) return [];
   const all = await navigator.mediaDevices.enumerateDevices();

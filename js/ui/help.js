@@ -10,7 +10,9 @@ const ROWS = [
   ['1 – 4', 'demo tracks'],
   ['T', 'turntable spin on/off'],
   ['?', 'this manual'],
-  ['M', 'MIDI learn (post-MVP)'],
+  ['M', 'MIDI learn: ERUPT (shift+click any TRIG button to learn it)'],
+  ['R', 'record .webm clip (HUD REC button; 1080p checkbox for export size)'],
+  ['TRIG', 'ERUPT fires the drop-shatter · PUNCH camera punch · PAL cycles palette · CRT toggles scanlines'],
 ];
 
 export function initHelp() {

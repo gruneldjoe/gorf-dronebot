@@ -25,6 +25,9 @@ export function initHUD() {
     <div class="meter"><label>SWAY</label><button id="sway-toggle">ON</button></div>
     <div class="meter"><label>CRT</label><button id="crt-toggle">OFF</button></div>
     <div class="meter"><label>FX</label><button id="fx-shockwaves">RINGS</button><button id="fx-punch">PUNCH</button><button id="fx-sun">SUN</button></div>
+    <div class="meter"><label>MIDI</label><select id="midi-device"><option value="">-- no midi --</option></select><span id="midi-status" class="dim">off</span></div>
+    <div class="meter"><label>TRIG</label><button data-trig="erupt" title="click: fire · shift+click: MIDI learn">ERUPT</button><button data-trig="punch" title="click: fire · shift+click: MIDI learn">PUNCH</button><button data-trig="palette" title="click: fire · shift+click: MIDI learn">PAL</button><button data-trig="crt" title="click: fire · shift+click: MIDI learn">CRT</button></div>
+    <div class="meter"><label>REC</label><button id="rec-toggle">● REC</button><span id="rec-timer"></span><label class="chk">1080p <input type="checkbox" id="rec-1080"></label></div>
     <div class="meter"><label>QUALITY</label><select id="quality-select"><option value="auto">AUTO</option><option value="high">HIGH</option><option value="med">MED</option><option value="low">LOW</option></select></div>
     <div class="hint">[H] hud &nbsp; [T] spin &nbsp; [C] crt &nbsp; [?] help &nbsp; <span id="src-name">no source</span> &nbsp;·&nbsp; <span id="sec-label">verse</span></div>
   `;
@@ -42,6 +45,24 @@ export function initHUD() {
   fileInput.accept = 'audio/*';
   fileInput.style.display = 'none';
   document.body.appendChild(fileInput);
+}
+
+// Step 17: MIDI + trigger elements for main.js to wire.
+export function getMidiUI() {
+  return {
+    deviceSelect: panelEl.querySelector('#midi-device'),
+    statusEl: panelEl.querySelector('#midi-status'),
+    trigBtns: [...panelEl.querySelectorAll('[data-trig]')],
+  };
+}
+
+// Step 18: recorder elements for main.js to wire.
+export function getRecorderUI() {
+  return {
+    recBtn: panelEl.querySelector('#rec-toggle'),
+    timerEl: panelEl.querySelector('#rec-timer'),
+    hd1080: panelEl.querySelector('#rec-1080'),
+  };
 }
 
 // Source-control elements for main.js to wire to the audio engine.

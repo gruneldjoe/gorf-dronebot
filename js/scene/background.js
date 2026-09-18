@@ -1,5 +1,9 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
+import { registerPaletteColor } from './palette.js';
+
+// Step 17: palette-shift helper — registers the live color and returns it.
+const pal = (key, hex) => registerPaletteColor(key, new THREE.Color(hex));
 
 // Seeded RNG so silhouettes are stable between loads.
 function mulberry32(seed) {
@@ -27,9 +31,9 @@ function makeSky() {
     depthWrite: false,
     fog: false,
     uniforms: {
-      uTop: { value: new THREE.Color(CONFIG.palette.skyTop) },
-      uHorizon: { value: new THREE.Color(CONFIG.palette.skyHorizon) },
-      uHotHorizon: { value: new THREE.Color(CONFIG.palette.skyHorizonHot) },
+      uTop: { value: pal('skyTop', CONFIG.palette.skyTop) },
+      uHorizon: { value: pal('skyHorizon', CONFIG.palette.skyHorizon) },
+      uHotHorizon: { value: pal('skyHorizonHot', CONFIG.palette.skyHorizonHot) },
       uHeat: { value: 0 },
     },
     vertexShader: `
@@ -61,8 +65,8 @@ function makeSun() {
     depthWrite: false,
     fog: false,
     uniforms: {
-      uCore: { value: new THREE.Color(CONFIG.palette.sunCore) },
-      uGlow: { value: new THREE.Color(CONFIG.palette.sunGlow) },
+      uCore: { value: pal('sunCore', CONFIG.palette.sunCore) },
+      uGlow: { value: pal('sunGlow', CONFIG.palette.sunGlow) },
     },
     vertexShader: `
       varying vec2 vUv;
@@ -157,9 +161,9 @@ function makeFloor() {
       uGridScale: { value: CONFIG.floor.gridScale },
       uScroll: { value: 0 },
       uHeat: { value: 0 },
-      uCool: { value: new THREE.Color(CONFIG.palette.floorCool) },
-      uHot: { value: new THREE.Color(CONFIG.palette.floorHot) },
-      uBase: { value: new THREE.Color(CONFIG.palette.floorBase) },
+      uCool: { value: pal('floorCool', CONFIG.palette.floorCool) },
+      uHot: { value: pal('floorHot', CONFIG.palette.floorHot) },
+      uBase: { value: pal('floorBase', CONFIG.palette.floorBase) },
       uFadeK: { value: CONFIG.floor.fadeK },
       uLineIntensity: { value: CONFIG.floor.lineIntensity },
       uRobotPos: { value: new THREE.Vector3(...CONFIG.robot.pos) },

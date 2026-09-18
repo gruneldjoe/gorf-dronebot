@@ -1,5 +1,9 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
+import { registerPaletteColor } from './palette.js';
+
+// Step 17: palette-shift helper — registers the live color and returns it.
+const pal = (key, hex) => registerPaletteColor(key, new THREE.Color(hex));
 
 // Ember particle pool. Embers spawn on the mech surface and rise as the
 // robot disintegrates. Spawn rate scales with (1 - coherence) * heat.
@@ -55,8 +59,8 @@ export function initEmbers(robotApi) {
     depthWrite: false,
     blending: THREE.AdditiveBlending,
     uniforms: {
-      uHot: { value: new THREE.Color(0xfff3d6) },
-      uMid: { value: new THREE.Color(CONFIG.palette.fireMid) },
+      uHot: { value: pal('fireCore', 0xfff3d6) },
+      uMid: { value: pal('fireMid', CONFIG.palette.fireMid) },
       uDark: { value: new THREE.Color(0x7a1020) },
     },
     vertexShader: `
