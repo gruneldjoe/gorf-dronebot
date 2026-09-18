@@ -328,7 +328,11 @@ export function updateRobot(dt, audioState) {
   const kickEdge = audioState.kick > 0.6 && prevKick <= 0.6;
   prevKick = audioState.kick;
   if (live) {
-    if (kickEdge) coherence = 1;
+    if (kickEdge) {
+      coherence = 1;
+      // Step 10: broadcast the beat so effects (shockwave, camera, sun) fire.
+      if (audioState.events) audioState.events.push({ type: 'kick', strength: audioState.kick });
+    }
     coherence = Math.max(0, coherence - dt * CONFIG.robot.coherenceDecay);
   } else {
     const idleTarget = 0.55 + Math.sin(t * 0.8) * 0.08;

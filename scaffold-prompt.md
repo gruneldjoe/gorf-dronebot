@@ -235,7 +235,8 @@ tab leaves it breathing gently.
 - Sun/moon scale pulse on kick; floor `heat` nudged by energy.
 
 **Done when:** Kicks thump — ring expands, camera kicks, sun throbs — all in
-sync with the beat indicator from Step 8.
+sync with the beat indicator from Step 8. Each effect has a HUD toggle
+(RINGS / PUNCH / SUN, R10), all default on.
 
 ## Step 11 — Flame jets
 

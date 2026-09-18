@@ -3,6 +3,7 @@ import { CONFIG } from './config.js';
 import { initBackground, updateBackground } from './scene/background.js';
 import { initRobot, updateRobot, setTurntable, isTurntableOn } from './scene/robot.js';
 import { initEmbers, updateEmbers } from './scene/embers.js';
+import { initEffects, updateEffects, setEffect, isEffectOn } from './scene/effects.js';
 import { initHUD, updateHUD, toggleHUD, getSourceUI, refreshLineInputs, setSourceName } from './ui/hud.js';
 import {
   useDemo, useFile, useMic, useLine, stopSource,
@@ -32,10 +33,11 @@ camera.lookAt(...CONFIG.camera.lookAt);
 initBackground(scene);
 const robotApi = initRobot(scene);
 initEmbers(robotApi);
+initEffects(scene);
 initHUD();
 
-// Live audio analysis fills sub/mid/high/energy/kick/snare/section each frame
-// (step 8). Heat stays on the manual slider until step 9 maps audio to the bot.
+// Live audio analysis fills sub/mid/high/energy/kick/snare/section each frame.
+// Heat stays on the manual slider until step 12 maps it to section/energy.
 const audioState = {
   sub: 0, mid: 0, high: 0,
   energy: 0, kick: 0, snare: 0,
@@ -43,6 +45,7 @@ const audioState = {
   time: 0,
   heat: 0.25,  // 0 = cool indigo, 1 = inferno
   pulse: 0,    // 0..1 sun pulse
+  events: [],  // per-frame beat events (robot pushes, effects consumes)
 };
 
 // --- Audio source wiring ---
@@ -100,6 +103,15 @@ function toggleSpin() {
 spinBtn.addEventListener('click', toggleSpin);
 refreshSpinBtn();
 
+// R10: per-effect toggles — shockwave rings, camera punch, sun pulse.
+for (const [id, name] of [['fx-shockwaves', 'shockwaves'], ['fx-punch', 'cameraPunch'], ['fx-sun', 'sunPulse']]) {
+  const btn = document.getElementById(id);
+  const label = btn.textContent;
+  const refresh = () => { btn.textContent = label + ' ' + (isEffectOn(name) ? 'ON' : 'OFF'); };
+  btn.addEventListener('click', () => { setEffect(name, !isEffectOn(name)); refresh(); });
+  refresh();
+}
+
 // --- Main loop (delta-time clamped) ---
 const clock = new THREE.Clock();
 
@@ -110,6 +122,7 @@ function tick() {
 
   // Live FFT analysis → sub/mid/high/kick/snare/energy/section.
   updateAudio(dt, audioState);
+  audioState.events.length = 0; // cleared each frame; robot pushes kick events
   audioState.time = t;
   audioState.pulse = Math.pow(Math.sin(t * 2.2) * 0.5 + 0.5, 2.0) * 0.35;
   const heatSlider = document.getElementById('heat-slider');
@@ -117,6 +130,7 @@ function tick() {
 
   updateBackground(scene, dt, audioState);
   updateRobot(dt, audioState);
+  updateEffects(dt, audioState, camera);
   updateEmbers(dt, audioState);
   updateHUD(dt, audioState);
 

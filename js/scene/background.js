@@ -13,6 +13,12 @@ function mulberry32(seed) {
 }
 
 let skyMat, sunMesh, sunBaseSize, parallaxLayers = [], floorMat, floorScroll = 0;
+// Step 10: decaying kick bump added to the sun scale, driven by pulseSun().
+let sunKick = 0;
+
+export function pulseSun(strength) {
+  sunKick = Math.min(1.5, sunKick + strength * CONFIG.sun.kickGain);
+}
 
 function makeSky() {
   const geo = new THREE.SphereGeometry(CONFIG.sky.radius, 32, 16);
@@ -204,8 +210,9 @@ export function initBackground(scene) {
 
 export function updateBackground(scene, dt, audioState) {
   const t = audioState.time;
-  // Sun pulse (audio later; gentle sine for now via audioState.pulse)
-  const s = sunBaseSize * (1 + audioState.pulse * CONFIG.sun.pulseAmount * 3);
+  // Sun pulse: gentle sine plus a decaying kick bump (step 10).
+  sunKick *= Math.exp(-dt * CONFIG.sun.kickDecay);
+  const s = sunBaseSize * (1 + audioState.pulse * CONFIG.sun.pulseAmount * 3 + sunKick);
   sunMesh.scale.setScalar(s);
 
   // Parallax scroll — layers wrap seamlessly via RepeatWrapping

@@ -36,6 +36,8 @@ export const CONFIG = {
     size: 90,
     pos: [0, 26, -420],
     pulseAmount: 0.18,
+    kickGain: 0.35,   // extra scale bump per kick (step 10)
+    kickDecay: 5.0,   // per second
   },
   parallax: {
     layers: [
@@ -70,5 +72,17 @@ export const CONFIG = {
     life: [0.8, 2.2],      // seconds
     rise: [1.5, 3.5],      // initial upward velocity
     spread: 0.9,           // lateral velocity
+  },
+  effects: {
+    ringPool: 10,      // shockwave ring pool (step 10)
+    ringLife: 0.9,     // seconds per shockwave
+    ringMaxRadius: 14, // world units
+    punchGain: 0.6,    // camera dolly distance on a full-strength kick
+    punchDecay: 6.0,   // camera punch exponential decay per second
+    fovKick: 2.5,      // degrees of fov punch on kick
+    // Per-effect HUD toggles (R10). All default on.
+    shockwaves: true,
+    cameraPunch: true,
+    sunPulse: true,
   },
 };

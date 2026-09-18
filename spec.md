@@ -119,6 +119,13 @@ The *feeling* of a SNES game, translated, not literal pixels:
   FFT analysis path as live input. Works with no mic/line-in.
 - R8. Turntable toggle: a HUD button (plus keyboard shortcut) to turn the
   robot's turntable rotation on/off. Default on.
+- R9. Demo track character: demo-01 (overworld, 140 BPM) and demo-04 (title
+  screen, 92 BPM) currently feel too similar; regenerate/tweak the generator
+  so each of the four tracks has a distinct sonic identity (tempo, mood,
+  density, timbre). (Dan, 2026-09-17)
+- R10. Effect toggles: HUD buttons to individually enable/disable the
+  kick-driven effects — shockwave rings, camera punch, sun pulse. All
+  default on. (Dan, 2026-09-17)
 
 ## 9. Open questions (resolved 2026-09-17)
 
