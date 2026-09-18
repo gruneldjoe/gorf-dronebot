@@ -376,12 +376,15 @@ export function setChassis(name) {
   if (sceneRef && robotGroup) {
     const duelWas = isDuelOn();
     if (duelWas) setDuel(false);
+    const tt = turntableOn, sw = swayOn; // rebuild must not reset user toggles
     sceneRef.remove(robotGroup);
     robotGroup.traverse((o) => {
       if (o.geometry) o.geometry.dispose();
       if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose());
     });
     initRobot(sceneRef);
+    setTurntable(tt);
+    setSway(sw);
     if (duelWas) setDuel(true);
   }
   return chassis;
