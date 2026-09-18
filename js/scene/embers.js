@@ -8,6 +8,7 @@ import { CONFIG } from '../config.js';
 let geo, lifeFracAttr;
 let positions, vels, life, maxLife, sizes, seeds, lifeFrac;
 let count;
+let budget; // step 20: active particle budget (quality scaler); <= count
 let samplerFn, getCoherenceFn;
 const _v = new THREE.Vector3();
 
@@ -31,6 +32,7 @@ export function initEmbers(robotApi) {
   samplerFn = robotApi.sampleSurfacePoint;
   getCoherenceFn = robotApi.getCoherence;
   count = CONFIG.embers.count;
+  budget = count;
 
   positions = new Float32Array(count * 3);
   vels = new Float32Array(count * 3);
@@ -92,13 +94,23 @@ export function initEmbers(robotApi) {
   robotApi.group.add(points);
 }
 
+// Step 20: cap the simulated/drawn particles (quality scaler).
+export function setEmberBudget(n) {
+  budget = Math.max(0, Math.min(n, count));
+  for (let i = budget; i < count; i++) {
+    life[i] = 0;
+    positions[i * 3 + 1] = -999;
+    lifeFrac[i] = 0;
+  }
+}
+
 export function updateEmbers(dt, audioState) {
   const coherence = getCoherenceFn();
-  const target = Math.floor(count * (1 - coherence) * (0.2 + 0.8 * audioState.sceneHeat));
+  const target = Math.floor(budget * (1 - coherence) * (0.2 + 0.8 * audioState.sceneHeat));
   const t = audioState.time;
   let active = 0;
 
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < budget; i++) {
     if (life[i] <= 0) continue;
     life[i] -= dt;
     if (life[i] <= 0) {
@@ -120,7 +132,7 @@ export function updateEmbers(dt, audioState) {
 
   let toSpawn = Math.min(target - active, 40); // per-frame spawn cap
   if (toSpawn > 0) {
-    for (let i = 0; i < count && toSpawn > 0; i++) {
+    for (let i = 0; i < budget && toSpawn > 0; i++) {
       if (life[i] <= 0) { respawn(i); toSpawn--; }
     }
   }

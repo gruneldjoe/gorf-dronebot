@@ -10,7 +10,7 @@ import { CONFIG } from '../config.js';
 // The composite pass does heat-haze distortion (scaled by energy),
 // vignette, and toggleable CRT (scanlines + chromatic aberration).
 
-let composer, compositePass;
+let composer, compositePass, bloomPass;
 let crtOn = CONFIG.post.crt;
 
 const CompositeShader = {
@@ -68,15 +68,21 @@ export function initPost(renderer, scene, camera) {
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
   const p = CONFIG.post;
-  composer.addPass(new UnrealBloomPass(
+  bloomPass = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
-    p.bloomStrength, p.bloomRadius, p.bloomThreshold));
+    p.bloomStrength, p.bloomRadius, p.bloomThreshold);
+  composer.addPass(bloomPass);
   compositePass = new ShaderPass(CompositeShader);
   compositePass.uniforms.uCrt.value = crtOn ? 1 : 0;
   composer.addPass(compositePass);
   composer.addPass(new OutputPass());
   onPostResize();
   return composer;
+}
+
+// Step 20: the quality scaler needs the bloom pass handle.
+export function getBloomPass() {
+  return bloomPass;
 }
 
 export function onPostResize() {

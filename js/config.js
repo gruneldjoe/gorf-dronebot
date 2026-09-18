@@ -120,4 +120,11 @@ export const CONFIG = {
     bloomThreshold: 0.62,
     crt: false, // off by default
   },
+  quality: {
+    tiers: {
+      high: { pixelRatio: 2, embers: 700, jets: 400, bloom: true },
+      med: { pixelRatio: 1.5, embers: 450, jets: 260, bloom: true },
+      low: { pixelRatio: 1, embers: 250, jets: 140, bloom: false },
+    },
+  },
 };

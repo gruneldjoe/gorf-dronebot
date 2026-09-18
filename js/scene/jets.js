@@ -10,13 +10,14 @@ import { CONFIG } from '../config.js';
 let geo, lifeFracAttr;
 let positions, vels, life, maxLife, sizes, seeds, lifeFrac;
 let count;
+let budget; // step 20: active particle budget (quality scaler); <= count
 let prevSnare = 0;
 let onsetTimes = [];
 const _dir = new THREE.Vector3();
 
 function spawnOne(vent, power) {
   const cfg = CONFIG.jets;
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < budget; i++) {
     if (life[i] > 0) continue;
     positions[i * 3] = vent.pos[0] + (Math.random() - 0.5) * 0.3;
     positions[i * 3 + 1] = vent.pos[1] + (Math.random() - 0.5) * 0.3;
@@ -42,8 +43,19 @@ function burst(ventIdxs, n, power) {
   }
 }
 
+// Step 20: cap the simulated/drawn particles (quality scaler).
+export function setJetBudget(n) {
+  budget = Math.max(0, Math.min(n, count));
+  for (let i = budget; i < count; i++) {
+    life[i] = 0;
+    positions[i * 3 + 1] = -999;
+    lifeFrac[i] = 0;
+  }
+}
+
 export function initJets(robotApi) {
   count = CONFIG.jets.count;
+  budget = count;
   positions = new Float32Array(count * 3);
   vels = new Float32Array(count * 3);
   life = new Float32Array(count);
@@ -127,7 +139,7 @@ export function updateJets(dt, audioState) {
     }
   }
 
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < budget; i++) {
     if (life[i] <= 0) continue;
     life[i] -= dt;
     if (life[i] <= 0) {

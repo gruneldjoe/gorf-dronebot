@@ -4,7 +4,8 @@ import { initBackground, updateBackground } from './scene/background.js';
 import { initRobot, updateRobot, setTurntable, isTurntableOn, setSway, isSwayOn, snapCoherence } from './scene/robot.js';
 import { initEmbers, updateEmbers } from './scene/embers.js';
 import { initJets, updateJets, triggerEruption } from './scene/jets.js';
-import { initPost, onPostResize, updatePost, setCrt, isCrtOn } from './post/fx.js';
+import { initPost, onPostResize, updatePost, setCrt, isCrtOn, getBloomPass } from './post/fx.js';
+import { initQuality, updateQuality, setQualityMode } from './post/quality.js';
 import { initTitle, dismissTitle, isTitleUp } from './ui/title.js';
 import { initHelp, toggleHelp } from './ui/help.js';
 import { initEffects, updateEffects, setEffect, isEffectOn } from './scene/effects.js';
@@ -44,6 +45,12 @@ initCamera(camera, renderer.domElement);
 initHUD();
 initHelp();
 const composer = initPost(renderer, scene, camera);
+initQuality({ renderer, composer, bloomPass: getBloomPass() });
+
+// Step 20: manual quality override (AUTO = the scaler decides).
+document.getElementById('quality-select').addEventListener('change', (e) => {
+  setQualityMode(e.target.value);
+});
 
 // Live audio analysis fills sub/mid/high/energy/kick/snare/section each frame.
 // Heat stays on the manual slider until step 12 maps it to section/energy.
@@ -220,6 +227,7 @@ function tick() {
   updateJets(dt, audioState);
   updateHUD(dt, audioState);
   updatePost(dt, audioState);
+  updateQuality(dt);
 
   composer.render();
 }
