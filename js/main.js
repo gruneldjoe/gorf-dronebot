@@ -5,6 +5,7 @@ import { initRobot, updateRobot, setTurntable, isTurntableOn, setSway, isSwayOn 
 import { initEmbers, updateEmbers } from './scene/embers.js';
 import { initJets, updateJets } from './scene/jets.js';
 import { initPost, onPostResize, updatePost, setCrt, isCrtOn } from './post/fx.js';
+import { initTitle, dismissTitle, isTitleUp } from './ui/title.js';
 import { initEffects, updateEffects, setEffect, isEffectOn } from './scene/effects.js';
 import { initHUD, updateHUD, toggleHUD, getSourceUI, refreshLineInputs, setSourceName } from './ui/hud.js';
 import {
@@ -61,14 +62,17 @@ async function selectSource(fn) {
     await fn();
     setSourceName(getSourceName());
     refreshLineInputs(listInputDevices); // device labels appear after mic permission
+    return true;
   } catch (err) {
     setSourceName('error: ' + (err.name || 'failed'));
     console.warn('audio source failed', err);
+    return false;
   }
 }
 srcUI.fileBtn.addEventListener('click', () => srcUI.fileInput.click());
-srcUI.fileInput.addEventListener('change', () => {
-  if (srcUI.fileInput.files[0]) selectSource(() => useFile(srcUI.fileInput.files[0]));
+srcUI.fileInput.addEventListener('change', async () => {
+  if (srcUI.fileInput.files[0]
+    && await selectSource(() => useFile(srcUI.fileInput.files[0]))) dismissTitle();
 });
 srcUI.micBtn.addEventListener('click', () => selectSource(() => useMic()));
 srcUI.stopBtn.addEventListener('click', () => {
@@ -94,6 +98,7 @@ window.addEventListener('resize', () => {
 
 // --- Keys ---
 window.addEventListener('keydown', (e) => {
+  if (isTitleUp()) return; // title screen owns the keyboard until dismissed
   if (e.key === 'h' || e.key === 'H') toggleHUD();
   else if (e.key === 't' || e.key === 'T') toggleSpin();
   else if (e.key === 'c' || e.key === 'C') toggleCrt();
@@ -134,6 +139,19 @@ function toggleCrt() {
 }
 crtBtn.addEventListener('click', toggleCrt);
 refreshCrtBtn();
+
+// --- Title screen (step 14): HUD stays hidden until a source is picked.
+const hudEl = document.getElementById('hud');
+hudEl.style.display = 'none';
+initTitle({
+  onDemo: async (i) => { if (await selectSource(() => useDemo(i))) dismissTitle(); },
+  onFile: () => srcUI.fileInput.click(),
+  onMic: async () => { if (await selectSource(() => useMic())) dismissTitle(); },
+  onLine: () => dismissTitle(),
+  onToggleCrt: () => toggleCrt(),
+  isCrtOn,
+  onDismiss: () => { hudEl.style.display = ''; },
+});
 
 // R10: per-effect toggles — shockwave rings, camera punch, sun pulse.
 for (const [id, name] of [['fx-shockwaves', 'shockwaves'], ['fx-punch', 'cameraPunch'], ['fx-sun', 'sunPulse']]) {
