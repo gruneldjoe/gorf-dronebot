@@ -70,7 +70,6 @@ html, body {
   text-shadow: inherit;
 }
 #hud button:hover { background: #1a1a4e; }
-#hud button[data-demo] { width: 28px; }
 
 #hud select {
   font: inherit;
@@ -80,6 +79,7 @@ html, body {
   border: 1px solid #2affff55;
   max-width: 150px;
 }
+#hud #demo-select { max-width: 190px; }
 
 #beat-dot {
   margin-left: 6px;

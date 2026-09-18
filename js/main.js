@@ -9,7 +9,7 @@ import { initTitle, dismissTitle, isTitleUp } from './ui/title.js';
 import { initEffects, updateEffects, setEffect, isEffectOn } from './scene/effects.js';
 import { initHUD, updateHUD, toggleHUD, getSourceUI, refreshLineInputs, setSourceName } from './ui/hud.js';
 import {
-  useDemo, useFile, useMic, useLine, stopSource,
+  useDemo, useFile, useMic, useLine, stopSource, DEMO_TRACKS,
   listInputDevices, updateAudio, getSourceName,
 } from './audio/engine.js';
 
@@ -79,10 +79,23 @@ srcUI.stopBtn.addEventListener('click', () => {
   stopSource();
   setSourceName(getSourceName());
 });
-srcUI.demoBtns.forEach((b) =>
-  b.addEventListener('click', () =>
-    selectSource(() => useDemo(parseInt(b.dataset.demo, 10))))
-);
+// Step 15: demo track selector — populated from DEMO_TRACKS (name, BPM,
+// vibe). playDemo keeps the select in sync no matter where the track was
+// picked (title menu, HUD, or keyboard).
+async function playDemo(n) {
+  srcUI.demoSelect.value = String(n);
+  return selectSource(() => useDemo(n));
+}
+for (const t of DEMO_TRACKS) {
+  const opt = document.createElement('option');
+  opt.value = t.n;
+  opt.textContent = `${t.n} · ${t.label} — ${t.bpm} BPM`;
+  opt.title = t.vibe;
+  srcUI.demoSelect.appendChild(opt);
+}
+srcUI.demoSelect.addEventListener('change', () => {
+  if (srcUI.demoSelect.value) playDemo(parseInt(srcUI.demoSelect.value, 10));
+});
 srcUI.lineSelect.addEventListener('change', () => {
   if (srcUI.lineSelect.value) selectSource(() => useLine(srcUI.lineSelect.value));
 });
@@ -144,7 +157,7 @@ refreshCrtBtn();
 const hudEl = document.getElementById('hud');
 hudEl.style.display = 'none';
 initTitle({
-  onDemo: async (i) => { if (await selectSource(() => useDemo(i))) dismissTitle(); },
+  onDemo: async (i) => { if (await playDemo(i)) dismissTitle(); },
   onFile: () => srcUI.fileInput.click(),
   onMic: async () => { if (await selectSource(() => useMic())) dismissTitle(); },
   onLine: () => dismissTitle(),

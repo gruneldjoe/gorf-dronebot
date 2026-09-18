@@ -19,7 +19,7 @@ export function initHUD() {
     <div class="meter"><label>HIGH</label><div class="bar"><div class="fill" id="m-high"></div></div></div>
     <div class="meter"><label>HEAT</label><input type="range" id="heat-slider" min="0" max="1" step="0.01" value="0.25"></div>
     <div class="meter"><label>SRC</label><button id="src-file">FILE</button><button id="src-mic">MIC</button><button id="src-stop">STOP</button></div>
-    <div class="meter"><label>DEMO</label><button data-demo="1">1</button><button data-demo="2">2</button><button data-demo="3">3</button><button data-demo="4">4</button><span id="beat-dot">●</span></div>
+    <div class="meter"><label>DEMO</label><select id="demo-select"><option value="">-- pick --</option></select><span id="beat-dot">●</span></div>
     <div class="meter"><label>LINE</label><select id="src-line"><option value="">-- select --</option></select></div>
     <div class="meter"><label>SPIN</label><button id="spin-toggle">ON</button></div>
     <div class="meter"><label>SWAY</label><button id="sway-toggle">ON</button></div>
@@ -49,7 +49,7 @@ export function getSourceUI() {
     fileBtn: panelEl.querySelector('#src-file'),
     micBtn: panelEl.querySelector('#src-mic'),
     stopBtn: panelEl.querySelector('#src-stop'),
-    demoBtns: [...panelEl.querySelectorAll('[data-demo]')],
+    demoSelect: panelEl.querySelector('#demo-select'),
     lineSelect,
     fileInput,
   };

@@ -8,10 +8,10 @@
 import { createDetector } from './detect.js';
 
 export const DEMO_TRACKS = [
-  { n: 1, label: 'OVERWORLD', file: 'demo-01-overworld-run.ogg' },
-  { n: 2, label: 'BOSS', file: 'demo-02-boss-protocol.ogg' },
-  { n: 3, label: 'GLITCH', file: 'demo-03-glitch-machine.ogg' },
-  { n: 4, label: 'TITLE', file: 'demo-04-title-screen.ogg' },
+  { n: 1, label: 'OVERWORLD', file: 'demo-01-overworld-run.ogg', bpm: 140, vibe: 'cheerful chiptune' },
+  { n: 2, label: 'BOSS', file: 'demo-02-boss-protocol.ogg', bpm: 160, vibe: 'aggressive boss theme' },
+  { n: 3, label: 'GLITCH', file: 'demo-03-glitch-machine.ogg', bpm: 128, vibe: 'bitcrushed glitch' },
+  { n: 4, label: 'TITLE', file: 'demo-04-title-screen.ogg', bpm: 92, vibe: 'dreamy pads' },
 ];
 
 let ctx = null;
@@ -60,7 +60,7 @@ async function ensureCtx() {
   detector = createDetector({ subLo, subHi, snrLo, snrHi });
 }
 
-function disconnectCurrent() {
+function disconnectCurrent(opts = {}) {
   for (const n of currentNodes) {
     try {
       if (n.stop) n.stop();
@@ -74,22 +74,36 @@ function disconnectCurrent() {
     currentStream.getTracks().forEach((t) => t.stop());
     currentStream = null;
   }
-  for (const k of Object.keys(bands)) {
-    bands[k].peak = 0.02;
-    bands[k].val = 0;
+  // Soft switch (demo → demo): keep band peaks + detector state so the
+  // analysis crossfades instead of popping. Hard switch resets everything.
+  if (!opts.soft) {
+    for (const k of Object.keys(bands)) {
+      bands[k].peak = 0.02;
+      bands[k].val = 0;
+    }
+    if (detector) detector.reset();
   }
-  if (detector) detector.reset();
 }
 
-async function playBuffer(audioBuf, name) {
+async function playBuffer(audioBuf, name, opts = {}) {
   await ensureCtx();
-  disconnectCurrent();
+  // Step 15: quick monitor fade around the swap — no clicks in the audio,
+  // no pops in the analysis.
+  const t = ctx.currentTime;
+  monitorGain.gain.cancelScheduledValues(t);
+  monitorGain.gain.setValueAtTime(Math.max(0.0001, monitorGain.gain.value), t);
+  monitorGain.gain.linearRampToValueAtTime(0.0001, t + 0.08);
+  await new Promise((r) => setTimeout(r, 90));
+  disconnectCurrent({ soft: opts.soft });
   const src = ctx.createBufferSource();
   src.buffer = audioBuf;
   src.loop = true;
   src.connect(analyser);
   src.start();
-  monitorGain.gain.value = 1; // audible
+  const t2 = ctx.currentTime;
+  monitorGain.gain.cancelScheduledValues(t2);
+  monitorGain.gain.setValueAtTime(0.0001, t2);
+  monitorGain.gain.linearRampToValueAtTime(1, t2 + 0.15); // audible
   currentNodes = [src];
   sourceName = name;
 }
@@ -102,7 +116,7 @@ export async function useDemo(n) {
   const buf = await res.arrayBuffer();
   await ensureCtx();
   const audioBuf = await ctx.decodeAudioData(buf);
-  await playBuffer(audioBuf, `demo-${n} ${track.label}`);
+  await playBuffer(audioBuf, `demo-${n} ${track.label}`, { soft: true });
 }
 
 export async function useFile(file) {
@@ -117,6 +131,7 @@ async function useStream(stream, name) {
   disconnectCurrent();
   const src = ctx.createMediaStreamSource(stream);
   src.connect(analyser);
+  monitorGain.gain.cancelScheduledValues(ctx.currentTime);
   monitorGain.gain.value = 0; // analyser only — no feedback
   currentNodes = [src];
   currentStream = stream;

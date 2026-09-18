@@ -1,21 +1,16 @@
 // Step 14: SNES title screen — PRESS START → menu → visualizer.
 // Menu selection is the browser audio gesture (the AudioContext starts
 // inside the click handler). The 3D scene idles behind the whole time.
-
-const TRACKS = [
-  { n: 1, name: 'OVERWORLD RUN', bpm: 140, vibe: 'cheerful chiptune' },
-  { n: 2, name: 'BOSS PROTOCOL', bpm: 160, vibe: 'aggressive boss' },
-  { n: 3, name: 'GLITCH MACHINE', bpm: 128, vibe: 'bitcrushed glitch' },
-  { n: 4, name: 'TITLE SCREEN', bpm: 92, vibe: 'dreamy pads' },
-];
+// Step 15: track list comes from DEMO_TRACKS (single source of truth).
+import { DEMO_TRACKS } from '../audio/engine.js';
 
 let root, menuEl, rows = [], selIdx = 0, mode = 'press'; // press | menu | hidden
 let cb = {};
 
 function rowDefs() {
   return [
-    ...TRACKS.map((t) => ({
-      label: t.name,
+    ...DEMO_TRACKS.map((t) => ({
+      label: t.label,
       sub: `${t.bpm} BPM · ${t.vibe}`,
       act: () => cb.onDemo(t.n),
     })),
