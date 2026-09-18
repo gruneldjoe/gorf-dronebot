@@ -172,7 +172,7 @@ The *feeling* of a SNES game, translated, not literal pixels:
 
 ## 10. Demo mode
 
-No live audio required to test. Four fixed synthy tracks ship in
+No live audio required to test. Ten fixed synthy tracks ship in
 `assets/demo/` (OGG Vorbis), generated once by `tools/gen_demo_tracks.py`
 (deterministic — same seed, same output) and committed as fixtures. They
 never change per run:

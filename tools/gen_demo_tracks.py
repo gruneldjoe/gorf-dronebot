@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate the gorf-dronebot demo tracks.
 
-Four fixed chiptune/glitch tracks for testing the visualizer without any live
+Ten fixed chiptune/glitch tracks for testing the visualizer without any live
 audio input. Synthesized with numpy (square/triangle/saw voices, noise drums,
 bitcrush + stutter glitch processing), written as 22050 Hz mono WAV, then
 converted to OGG Vorbis for the web.
@@ -388,11 +388,341 @@ def track_title():
     return master(t)
 
 
+def track_neon():
+    """demo-05: 118 BPM synthwave cruiser, D minor. Driving 8th-note bass,
+    gated arena snare, neon saw lead. V: groove + pads. B: lead enters.
+    D: full neon. O: pads + sparse lead."""
+    t = Track(bpm=118, bars=16)
+    ARR = 'VVVVBBBBDDDDOOOO'
+    sec = lambda bar: ARR[bar]  # noqa: E731
+    roots = [38, 34, 41, 36]  # Dm Bb F C
+    chords_up = [[62, 65, 69], [58, 62, 65], [65, 69, 72], [60, 64, 67]]
+    mel = [
+        [(0, 2, 74), (2, 2, 77), (4, 2, 81), (6, 2, 79), (8, 2, 77), (10, 2, 76), (12, 4, 74)],
+        [(0, 2, 77), (2, 2, 81), (4, 2, 84), (6, 2, 81), (8, 2, 79), (10, 2, 77), (12, 4, 76)],
+        [(0, 2, 81), (2, 2, 79), (4, 2, 77), (6, 2, 76), (8, 2, 74), (10, 2, 76), (12, 4, 77)],
+        [(0, 2, 76), (2, 2, 77), (4, 2, 81), (6, 2, 79), (8, 2, 77), (10, 2, 74), (12, 4, 72)],
+    ]
+    for bar in range(16):
+        s = sec(bar)
+        root = roots[bar % 4]
+        for step in range(0, 16, 2):  # driving 8th bass
+            octv = root + 12 if (s == 'D' and step % 8 == 6) else root
+            t.note("bass", bar, step, 2, octv, vol=0.36, kind="saw", decay=8.0)
+        if s in ('V', 'B'):  # detuned pads, voiced up
+            for midi in chords_up[bar % 4]:
+                t.note("pad", bar, 0, 16, midi, vol=0.07, kind="saw",
+                       decay=0.6, attack=0.5)
+                t.note("pad", bar, 0, 16, midi, vol=0.04, kind="tri",
+                       decay=0.6, attack=0.5)
+        if s == 'D':
+            for step, dur, midi in mel[bar % 4]:
+                t.note("lead", bar, step, dur, midi, vol=0.30, kind="saw",
+                       decay=4.0, vib=(5.5, 0.005))
+                t.note("lead", bar, step, dur, midi + 12, vol=0.14,
+                       kind="saw", decay=4.0)
+        elif s == 'B':
+            for step, dur, midi in mel[bar % 4][::2]:
+                t.note("lead", bar, step, dur, midi, vol=0.24, kind="saw",
+                       decay=5.0, vib=(5.5, 0.005))
+        elif s == 'O' and bar % 2 == 0:
+            step, dur, midi = mel[bar % 4][0]
+            t.note("lead", bar, step, dur * 2, midi, vol=0.18, kind="saw",
+                   decay=2.0, vib=(5.0, 0.006))
+        for step in ((0, 4, 8, 12) if s in ('B', 'D') else (0, 8)):
+            t.kick(bar, step, vol=0.85)
+        if s in ('B', 'D'):
+            for step in (4, 12):
+                t.snare(bar, step, vol=0.55, dur=0.25)  # gated arena snare
+        if s == 'B' and bar == 7:
+            for step in range(16):
+                t.snare(bar, step, vol=0.20 + 0.025 * step, dur=0.06)
+        hat_steps = (range(16) if s == 'D'
+                     else range(0, 16, 2) if s == 'B' else range(0, 16, 4))
+        for step in hat_steps:
+            t.hat(bar, step, vol=0.09, open_=(step == 14))
+        if s == 'D':
+            for step in range(0, 16, 2):
+                t.ride(bar, step, vol=0.12)
+        if bar == 7:
+            t.sweep(bar, 0, 16, vol=0.22, up=True)
+        if bar == 8:
+            t.crash(bar, 0)
+    t.buf["pad"] = highpass(t.buf["pad"])
+    return master(t)
+
+
+def track_halftime():
+    """demo-06: 150 BPM halftime trap, F# minor. Booming 808s, sparse kicks,
+    triplet hats in the drop, dark bell lead. The verse barely holds the
+    robot together; the drop slams it shut."""
+    t = Track(bpm=150, bars=16)
+    ARR = 'VVVVVVBBBBDDDDOO'
+    sec = lambda bar: ARR[bar]  # noqa: E731
+    roots = [30, 30, 28, 33]  # F#1 F#1 E1 A1
+    bell = [[(0, 3, 66), (4, 3, 69), (8, 3, 71), (12, 4, 73)],
+            [(0, 3, 69), (4, 3, 71), (8, 3, 76), (12, 4, 74)]]
+    for bar in range(16):
+        s = sec(bar)
+        root = roots[bar % 4]
+        for step, dur in ((0, 10), (10, 6)):  # 808 boom
+            t.note("bass", bar, step, dur, root, vol=0.50, kind="tri",
+                   decay=1.6, attack=0.01)
+        if s == 'D':
+            t.note("bass", bar, 7, 3, root, vol=0.40, kind="tri",
+                   decay=2.0, bend_to=0.97)
+        for step in ((0, 7, 10) if s == 'D' else (0, 10)):
+            t.kick(bar, step, vol=0.9)
+        if s in ('B', 'D'):
+            t.snare(bar, 8, vol=0.55)  # halftime backbeat
+        if s == 'D':
+            for step in range(16):
+                t.hat(bar, step, vol=0.10 if step % 2 == 0 else 0.06)
+            for i, step in enumerate((12, 13, 14, 15)):  # triplet-ish roll tail
+                t.hat(bar, step, vol=0.08 + 0.02 * i)
+        elif s == 'B':
+            for step in range(0, 16, 2):
+                t.hat(bar, step, vol=0.09, open_=(step == 14))
+        if s == 'D':
+            for step, dur, midi in bell[bar % 2]:
+                t.note("lead", bar, step, dur, midi, vol=0.30, kind="square",
+                       decay=9.0)
+                t.note("lead", bar, step, dur, midi - 12, vol=0.12,
+                       kind="tri", decay=9.0)
+        elif s in ('V', 'B') and bar % 2 == 0:
+            step, dur, midi = bell[bar % 2][0]
+            t.note("lead", bar, step, dur, midi, vol=0.22, kind="square",
+                   decay=10.0)
+        if s == 'D':
+            for step in (0, 8):
+                t.ride(bar, step, vol=0.10)
+        if bar == 9:
+            t.sweep(bar, 0, 16, vol=0.22, up=True)
+        if bar == 10:
+            t.crash(bar, 0)
+    return master(t)
+
+
+def track_jungle():
+    """demo-07: 172 BPM jungle/breaks. Chopped synthesized break, Reese bass,
+    ragga stabs, stutter edits in the drop. The fastest thing in the library
+    — coherence stays pinned."""
+    t = Track(bpm=172, bars=16)
+    ARR = 'VVBBBBDDDDDDOOOO'
+    sec = lambda bar: ARR[bar]  # noqa: E731
+    reese = [28, 28, 31, 26]  # E1 E1 G1 D1
+    stabs = [[57, 60, 64], [55, 59, 62], [57, 60, 64], [53, 57, 60]]
+    for bar in range(16):
+        s = sec(bar)
+        root = reese[(bar // 2) % 4]
+        long = 16 if s in ('V', 'O') else 8
+        t.note("bass", bar, 0, long, root, vol=0.40, kind="saw",
+               decay=1.2, attack=0.02)
+        t.note("bass", bar, 0, long, root, vol=0.30, kind="saw",
+               decay=1.2, attack=0.02, vib=(6.0, 0.006))  # detune layer
+        if s in ('B', 'D'):
+            t.note("bass", bar, 8, 8, root + 3, vol=0.36, kind="saw",
+                   decay=1.4, attack=0.02)
+        for step in (0, 10):
+            t.kick(bar, step, vol=0.8)
+        if s == 'D':
+            t.kick(bar, 7, vol=0.7)
+        for step in [4, 12] + ([7, 14] if s in ('B', 'D') else []):
+            t.snare(bar, step, vol=0.5 if step in (4, 12) else 0.28, dur=0.09)
+        for step in range(16):
+            t.hat(bar, step, vol=0.11 if step % 4 == 2 else 0.07)
+        if s in ('B', 'D'):
+            for step in (2, 6, 11, 14):
+                for midi in stabs[bar % 4]:
+                    t.note("lead", bar, step, 2, midi, vol=0.16,
+                           kind="square", decay=8.0)
+        elif s == 'V':
+            for midi in stabs[bar % 4]:
+                t.note("lead", bar, 8, 3, midi, vol=0.14, kind="square",
+                       decay=8.0)
+        if s == 'D' and bar % 2 == 1:
+            for step in range(12, 16):
+                t.snare(bar, step, vol=0.25 + 0.04 * (step - 12), dur=0.06)
+        if bar == 5:
+            t.sweep(bar, 0, 16, vol=0.22, up=True)
+        if bar == 6:
+            t.crash(bar, 0)
+    mix = master(t)
+    for bar in (7, 9, 10):  # chop edits in the drop
+        stutter(mix, t.step, bar, src_step=4, src_len=2, dst_step=12, dst_len=4)
+    return mix
+
+
+def track_void():
+    """demo-08: 100 BPM dark ambient techno, C# minor. Drone pads, sparse
+    industrial kicks, metallic pings, a slow choir-like lead. The comedown."""
+    t = Track(bpm=100, bars=16)
+    ARR = 'VVVVVBBBBBBDDDOO'
+    sec = lambda bar: ARR[bar]  # noqa: E731
+    rng = np.random.default_rng(SEED + 8)
+    chord = [61, 64, 68, 74]  # C#m(add9), voiced up — sub stays kick-only
+    choir_mel = [(0, 16, 73), (4, 16, 71), (8, 16, 69), (12, 16, 68)]
+    for bar in range(16):
+        s = sec(bar)
+        for midi in chord:
+            t.note("pad", bar, 0, 16, midi, vol=0.10, kind="saw",
+                   decay=0.4, attack=1.2)
+            t.note("pad", bar, 0, 16, midi + 1, vol=0.05, kind="tri",
+                   decay=0.4, attack=1.2)  # detune shimmer
+        for step in ((0, 4, 8, 12) if s == 'D'
+                     else (0, 8) if s == 'B' else (0,)):
+            t.kick(bar, step, vol=0.75 if s == 'D' else 0.6)
+        if bar % 2 == 0:
+            t.ride(bar, 8, vol=0.12)
+        if s == 'D' and bar % 2 == 1:
+            t.ride(bar, 0, vol=0.10)
+        for step in range(16):
+            if rng.random() < (0.30 if s == 'D' else 0.12):
+                t.hat(bar, step, vol=0.06)
+        if s in ('B', 'D'):
+            for step, dur, midi in choir_mel:
+                t.note("lead", bar, step, dur, midi, vol=0.20, kind="tri",
+                       decay=1.0, attack=0.1, vib=(4.5, 0.008))
+        elif s == 'V' and bar % 4 == 3:
+            step, dur, midi = choir_mel[0]
+            t.note("lead", bar, step, dur, midi, vol=0.14, kind="tri",
+                   decay=1.0, attack=0.2, vib=(4.5, 0.008))
+        if bar == 10:
+            t.sweep(bar, 0, 16, vol=0.18, up=True)
+        if bar == 11:
+            t.crash(bar, 0)
+    t.buf["pad"] = highpass(t.buf["pad"])
+    return master(t)
+
+
+def track_hyper():
+    """demo-09: 150 BPM hyperpop chip, A major. Bouncy square bass, pitched
+    16th arps, chippy lead. Pure sugar — the palette cleanser."""
+    t = Track(bpm=150, bars=16)
+    ARR = 'VVVVBBBBDDDDOOOO'
+    sec = lambda bar: ARR[bar]  # noqa: E731
+    roots = [45, 41, 43, 43]  # A2 F2 G2 G2
+    arp_chords = [[69, 73, 76, 81], [65, 69, 72, 77],
+                  [67, 71, 74, 79], [67, 71, 74, 79]]
+    mel = [
+        [(0, 2, 81), (2, 2, 79), (4, 2, 76), (6, 2, 79), (8, 2, 81), (10, 2, 84), (12, 4, 81)],
+        [(0, 2, 79), (2, 2, 76), (4, 2, 74), (6, 2, 76), (8, 2, 79), (10, 2, 81), (12, 4, 79)],
+        [(0, 2, 84), (2, 2, 81), (4, 2, 79), (6, 2, 81), (8, 2, 84), (10, 2, 88), (12, 4, 86)],
+        [(0, 2, 81), (2, 2, 79), (4, 2, 76), (6, 2, 74), (8, 2, 76), (10, 2, 79), (12, 4, 76)],
+    ]
+    for bar in range(16):
+        s = sec(bar)
+        root = roots[bar % 4]
+        for step in range(0, 16, 2):  # bouncy bass
+            b = root + (12 if step % 8 == 4 else 0)
+            t.note("bass", bar, step, 2, b, vol=0.36, kind="square",
+                   decay=8.0, duty=0.4)
+        arp = arp_chords[bar % 4]
+        for i, step in enumerate(range(16)):  # pitched 16th arp
+            t.note("arp", bar, step, 1, arp[i % 4] + (12 if i % 8 >= 4 else 0),
+                   vol=0.09, kind="square", duty=0.25, decay=10.0)
+        if s == 'D':
+            for step, dur, midi in mel[bar % 4]:
+                t.note("lead", bar, step, dur, midi, vol=0.28, kind="square",
+                       decay=5.0, vib=(6.0, 0.004))
+                t.note("lead", bar, step, dur, midi + 12, vol=0.13,
+                       kind="square", decay=5.0)
+        elif s in ('B', 'V'):
+            for step, dur, midi in mel[bar % 4][::2]:
+                t.note("lead", bar, step, dur, midi, vol=0.22, kind="square",
+                       decay=6.0, vib=(6.0, 0.004))
+        for step in ((0, 4, 8, 12) if s in ('B', 'D') else (0, 8)):
+            t.kick(bar, step, vol=0.85)
+        if s in ('B', 'D'):
+            for step in (4, 12):
+                t.snare(bar, step, vol=0.5, dur=0.08)  # clap-ish
+        if s == 'B' and bar == 7:
+            for step in range(16):
+                t.snare(bar, step, vol=0.20 + 0.025 * step, dur=0.06)
+        for step in (range(16) if s == 'D' else range(0, 16, 2)):
+            t.hat(bar, step, vol=0.09, open_=(step == 14))
+        if s == 'D':
+            for step in range(0, 16, 2):
+                t.ride(bar, step, vol=0.11)
+        if bar == 7:
+            t.sweep(bar, 0, 16, vol=0.22, up=True)
+        if bar == 8:
+            t.crash(bar, 0)
+    t.buf["lead"] = bitcrush(t.buf["lead"], 6)
+    return master(t)
+
+
+def track_descent():
+    """demo-10: 132 BPM epic closer, E minor. Sparse piano-ish motif, a huge
+    6-bar drop — the biggest in the library — then a stripped comedown."""
+    t = Track(bpm=132, bars=16)
+    ARR = 'VVVBBBBBDDDDDDOO'
+    sec = lambda bar: ARR[bar]  # noqa: E731
+    motif = [(0, 4, 64), (4, 4, 67), (8, 4, 71), (12, 4, 69),
+             (0, 4, 67), (4, 4, 71), (8, 4, 74), (12, 4, 71)]
+    roots = [40, 36, 38, 43]  # E2 C2 D2 G2
+    epic = [[(0, 4, 76), (4, 4, 79), (8, 4, 83), (12, 4, 81)],
+            [(0, 4, 79), (4, 4, 83), (8, 4, 86), (12, 4, 83)]]
+    for bar in range(16):
+        s = sec(bar)
+        root = roots[bar % 4]
+        if s in ('V', 'O') or (s == 'B' and bar < 6):  # piano-ish motif
+            half = motif[:4] if bar % 2 == 0 else motif[4:]
+            for step, dur, midi in half:
+                t.note("lead", bar, step, dur, midi, vol=0.26, kind="tri",
+                       decay=2.5, attack=0.02, vib=(5.0, 0.004))
+        if s in ('B', 'D'):  # sub weight
+            for step in range(0, 16, 4):
+                t.note("bass", bar, step, 4, root - 12, vol=0.44,
+                       kind="tri", decay=3.0)
+        else:
+            t.note("bass", bar, 0, 8, root - 12, vol=0.30, kind="tri",
+                   decay=2.0)
+        if s == 'D':
+            for step in (0, 4, 8, 12):
+                t.kick(bar, step, vol=0.9)
+            t.kick(bar, 14, vol=0.7)
+            for step, dur, midi in epic[bar % 2]:  # epic octave saw lead
+                t.note("lead", bar, step, dur, midi, vol=0.30, kind="saw",
+                       decay=3.0, vib=(5.5, 0.005))
+                t.note("lead", bar, step, dur, midi + 12, vol=0.15,
+                       kind="saw", decay=3.0)
+            for step in (4, 12):
+                t.snare(bar, step, vol=0.55, dur=0.2)
+            for step in range(16):
+                t.hat(bar, step, vol=0.09, open_=(step == 14))
+            for step in range(0, 16, 2):
+                t.ride(bar, step, vol=0.13)
+        elif s == 'B':
+            for step in (0, 8):
+                t.kick(bar, step, vol=0.7)
+            if bar >= 6:  # tom-ish build + snare roll into the drop
+                for step in (0, 3, 6, 10, 12, 14):
+                    t.kick(bar, step, vol=0.55)
+                for step in range(8, 16):
+                    t.snare(bar, step, vol=0.18 + 0.03 * (step - 8), dur=0.06)
+            for step in range(0, 16, 2):
+                t.hat(bar, step, vol=0.08)
+        elif bar % 2 == 0:  # V / O: feather-light
+            t.kick(bar, 0, vol=0.4)
+        if bar == 7:
+            t.sweep(bar, 0, 16, vol=0.25, up=True)
+        if bar == 8:
+            t.crash(bar, 0)
+    return master(t)
+
+
 TRACKS = [
     ("demo-01-overworld-run", "Overworld Run — 140 BPM cheerful chiptune, C major, verse/build/drop/outro", track_overworld),
     ("demo-02-boss-protocol", "Boss Protocol — 160 BPM aggressive boss theme, A minor, half-time verse into full assault", track_boss),
     ("demo-03-glitch-machine", "Glitch Machine — 128 BPM glitch chip, sparse blips into full chaos", track_glitch),
     ("demo-04-title-screen", "Title Screen — 92 BPM dreamy pads, 8-bar drift into a gentle crest (no snare, ever)", track_title),
+    ("demo-05-neon-highway", "Neon Highway — 118 BPM synthwave cruiser, D minor, driving 8ths + gated snare", track_neon),
+    ("demo-06-halftime-graveyard", "Halftime Graveyard — 150 BPM halftime trap, F# minor, booming 808s", track_halftime),
+    ("demo-07-jungle-circuit", "Jungle Circuit — 172 BPM jungle breaks, chopped break + Reese bass", track_jungle),
+    ("demo-08-void-choir", "Void Choir — 100 BPM dark ambient techno, C# minor drone + industrial kicks", track_void),
+    ("demo-09-hyper-popcorn", "Hyper Popcorn — 150 BPM hyperpop chip, A major sugar rush", track_hyper),
+    ("demo-10-final-descent", "Final Descent — 132 BPM epic closer, E minor, the biggest drop in the library", track_descent),
 ]
 
 
