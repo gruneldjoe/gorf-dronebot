@@ -70,5 +70,22 @@ html, body {
   text-shadow: inherit;
 }
 #hud button:hover { background: #1a1a4e; }
+#hud button[data-demo] { width: 28px; }
+
+#hud select {
+  font: inherit;
+  font-size: 11px;
+  background: #101030;
+  color: #8affff;
+  border: 1px solid #2affff55;
+  max-width: 150px;
+}
+
+#beat-dot {
+  margin-left: 6px;
+  font-size: 14px;
+  opacity: 0.25;
+  text-shadow: 0 0 8px currentColor;
+}
 
 #hud .hint { color: #5a5a8a; margin-top: 6px; }

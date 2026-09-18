@@ -61,6 +61,8 @@ export const CONFIG = {
     eyeSize: 2.4,          // never-dispersing eye points
     eyeColor: 0xff7a2a,
     disperse: 3.2,         // how high dispersed points rise
+    coherenceDecay: 1.5,   // step 9: coherence falloff per second between kicks
+    swayGain: 0.10,        // step 9: mid-driven sway amplitude scale
   },
   embers: {
     count: 700,

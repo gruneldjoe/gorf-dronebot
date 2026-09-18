@@ -11,6 +11,12 @@ let robotGroup, mechGroup, sampler;
 let pointsMat, wireMat, eyeMat, fireLight;
 let coherence = 1;
 let turntableOn = true; // R8: user-toggleable turntable
+// Step 9: pivot groups for head + arms (identity at build, rotated at runtime)
+let headGroup, armL, armR;
+// Step 9: audio-follow state
+let prevKick = 0;
+let subS = 0, midS = 0, highS = 0;
+let headTiltX = 0, headTiltZ = 0;
 
 export function setTurntable(on) { turntableOn = !!on; }
 export function isTurntableOn() { return turntableOn; }
@@ -21,13 +27,31 @@ function part(geo, x, y, z, mat, opts = {}) {
   if (opts.rx) m.rotation.x = opts.rx;
   if (opts.ry) m.rotation.y = opts.ry;
   if (opts.rz) m.rotation.z = opts.rz;
+  const parent = opts.group || mechGroup;
+  parent.add(m);
+  // Bake the pivot group's bind-pose transform so surface sampling and the
+  // wireframe stay in mechGroup space while parts live in pivot groups.
   m.updateMatrix();
-  mechGroup.add(m);
-  sampler.add(geo, m.matrix);
+  parent.updateMatrix();
+  const baked = new THREE.Matrix4().multiplyMatrices(parent.matrix, m.matrix);
+  sampler.add(geo, baked);
+  m.userData.baked = baked;
   return m;
 }
 
 function buildMech() {
+  // Pivot groups: identity at build time (so baked surface sampling stays
+  // valid), rotated at runtime for sway/head-tilt/arm-swing.
+  headGroup = new THREE.Group();
+  headGroup.position.set(0, 6.1, 0); // neck pivot
+  mechGroup.add(headGroup);
+  armL = new THREE.Group();
+  armL.position.set(-1.85, 5.6, 0); // shoulder pivots
+  mechGroup.add(armL);
+  armR = new THREE.Group();
+  armR.position.set(1.85, 5.6, 0);
+  mechGroup.add(armR);
+
   const dark = new THREE.MeshStandardMaterial({
     color: CONFIG.palette.bot, roughness: 0.5, metalness: 0.8,
   });
@@ -45,24 +69,27 @@ function buildMech() {
   part(new THREE.BoxGeometry(2.3, 1.7, 1.4), 0, 4.85, 0, dark);    // torso
   part(new THREE.BoxGeometry(2.55, 0.75, 1.6), 0, 5.55, 0, dark);  // chest armor
 
-  // Arms: big shoulders, heavy forearms
+  // Arms: big shoulders, heavy forearms (positions relative to shoulder pivot)
   for (const s of [-1, 1]) {
-    part(new THREE.BoxGeometry(1.15, 1.15, 1.15), s * 1.85, 5.6, 0, dark);
-    part(new THREE.CylinderGeometry(0.34, 0.38, 1.35, 10), s * 1.85, 4.45, 0, dark);
-    part(new THREE.BoxGeometry(0.6, 1.25, 0.65), s * 1.85, 3.15, 0, dark);
-    part(new THREE.BoxGeometry(0.55, 0.55, 0.55), s * 1.85, 2.3, 0, dark);
+    const arm = s < 0 ? armL : armR;
+    part(new THREE.BoxGeometry(1.15, 1.15, 1.15), 0, 0, 0, dark, { group: arm });
+    part(new THREE.CylinderGeometry(0.34, 0.38, 1.35, 10), 0, -1.15, 0, dark, { group: arm });
+    part(new THREE.BoxGeometry(0.6, 1.25, 0.65), 0, -2.45, 0, dark, { group: arm });
+    part(new THREE.BoxGeometry(0.55, 0.55, 0.55), 0, -3.3, 0, dark, { group: arm });
   }
 
   // IG-88 head: horizontal cylinder + glowing sensor band + antennae
-  part(new THREE.CylinderGeometry(0.26, 0.26, 0.45, 10), 0, 6.15, 0, dark);
-  part(new THREE.CylinderGeometry(0.48, 0.52, 0.75, 14), 0, 6.65, 0, dark, { rx: Math.PI / 2 });
-  part(new THREE.CylinderGeometry(0.53, 0.53, 0.14, 14), 0, 6.65, 0.12, glow, { rx: Math.PI / 2 });
+  // (positions relative to neck pivot at y=6.1)
+  const hg = { group: headGroup };
+  part(new THREE.CylinderGeometry(0.26, 0.26, 0.45, 10), 0, 0.05, 0, dark, hg);
+  part(new THREE.CylinderGeometry(0.48, 0.52, 0.75, 14), 0, 0.55, 0, dark, { ...hg, rx: Math.PI / 2 });
+  part(new THREE.CylinderGeometry(0.53, 0.53, 0.14, 14), 0, 0.55, 0.12, glow, { ...hg, rx: Math.PI / 2 });
   for (const s of [-1, 1]) {
-    part(new THREE.CylinderGeometry(0.03, 0.03, 0.7, 6), s * 0.3, 7.2, -0.1, dark, { rz: -s * 0.15 });
+    part(new THREE.CylinderGeometry(0.03, 0.03, 0.7, 6), s * 0.3, 1.1, -0.1, dark, { ...hg, rz: -s * 0.15 });
   }
   // Physical eye meshes (the never-dispersing eye POINTS are separate)
   for (const s of [-1, 1]) {
-    part(new THREE.SphereGeometry(0.09, 10, 10), s * 0.18, 6.68, 0.44, glow);
+    part(new THREE.SphereGeometry(0.09, 10, 10), s * 0.18, 0.58, 0.44, glow, hg);
   }
 }
 
@@ -112,6 +139,7 @@ function buildGhost() {
       uTime: { value: 0 },
       uCoherence: { value: 1 },
       uHeat: { value: 0 },
+      uMid: { value: 0 },
       uSize: { value: CONFIG.robot.pointSize },
       uDisperse: { value: CONFIG.robot.disperse },
       uCyan: { value: new THREE.Color(CONFIG.palette.cyan) },
@@ -122,16 +150,17 @@ function buildGhost() {
     vertexShader: `
       ${DISPERSE_GLSL}
       uniform float uSize;
+      uniform float uMid;
       void main() {
         vec3 p = disperseOffset(position);
         vec4 mv = modelViewMatrix * vec4(p, 1.0);
         gl_Position = projectionMatrix * mv;
-        gl_PointSize = uSize * (140.0 / -mv.z);
+        gl_PointSize = uSize * (0.8 + 0.5 * uMid) * (140.0 / -mv.z);
       }
     `,
     fragmentShader: `
       uniform vec3 uCyan, uWhite, uFireMid, uFireEdge;
-      uniform float uHeat;
+      uniform float uHeat, uMid;
       varying float vDisp;
       varying float vSeed;
       void main() {
@@ -142,6 +171,7 @@ function buildGhost() {
         vec3 ember = mix(uFireMid, uFireEdge, vSeed);
         vec3 col = mix(solid, ember, clamp(vDisp * 1.2, 0.0, 1.0));
         col = mix(col, uFireMid, uHeat * 0.35 * (1.0 - vDisp));
+        col *= 0.85 + 0.5 * uMid;
         float alpha = a * (1.0 - vDisp * 0.35);
         gl_FragColor = vec4(col, alpha);
       }
@@ -161,6 +191,7 @@ function buildWireframe() {
       uTime: { value: 0 },
       uCoherence: { value: 1 },
       uHeat: { value: 0 },
+      uMid: { value: 0 },
       uDisperse: { value: CONFIG.robot.disperse },
       uCyan: { value: new THREE.Color(CONFIG.palette.cyan) },
       uFire: { value: new THREE.Color(CONFIG.palette.fireMid) },
@@ -175,20 +206,21 @@ function buildWireframe() {
     `,
     fragmentShader: `
       uniform vec3 uCyan, uFire;
-      uniform float uHeat, uOpacity;
+      uniform float uHeat, uOpacity, uMid;
       varying float vDisp;
       varying float vSeed;
       void main() {
         vec3 col = mix(uCyan, uFire, clamp(uHeat * 0.7 + vDisp * 0.6, 0.0, 1.0));
-        float alpha = (1.0 - vDisp * 0.85) * uOpacity;
+        float alpha = (1.0 - vDisp * 0.85) * uOpacity * (0.7 + 0.6 * uMid);
         gl_FragColor = vec4(col, alpha);
       }
     `,
   });
-  for (const child of [...mechGroup.children]) {
-    if (!child.isMesh) continue;
+  const meshes = [];
+  mechGroup.traverse((o) => { if (o.isMesh) meshes.push(o); });
+  for (const child of meshes) {
     const wg = new THREE.WireframeGeometry(child.geometry);
-    wg.applyMatrix4(child.matrix);
+    wg.applyMatrix4(child.userData.baked);
     const n = wg.attributes.position.count;
     const rands = new Float32Array(n);
     const seeds = new Float32Array(n);
@@ -203,8 +235,9 @@ function buildWireframe() {
 
 function buildEyes() {
   const g = new THREE.BufferGeometry();
+  // Relative to headGroup (neck pivot at y=6.1) so the eyes follow head tilt.
   g.setAttribute('position', new THREE.BufferAttribute(
-    new Float32Array([-0.18, 6.68, 0.47, 0.18, 6.68, 0.47]), 3));
+    new Float32Array([-0.18, 0.58, 0.47, 0.18, 0.58, 0.47]), 3));
   eyeMat = new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
@@ -213,6 +246,7 @@ function buildEyes() {
       uSize: { value: CONFIG.robot.eyeSize },
       uColor: { value: new THREE.Color(CONFIG.robot.eyeColor) },
       uTime: { value: 0 },
+      uHigh: { value: 0 },
     },
     vertexShader: `
       uniform float uSize;
@@ -224,21 +258,23 @@ function buildEyes() {
     `,
     fragmentShader: `
       uniform vec3 uColor;
-      uniform float uTime;
+      uniform float uTime, uHigh;
       void main() {
         vec2 pc = gl_PointCoord - 0.5;
         float d = length(pc) * 2.0;
         float core = smoothstep(0.5, 0.05, d);
         float halo = smoothstep(1.0, 0.2, d) * 0.5;
-        float flick = 0.9 + 0.1 * sin(uTime * 23.0);
+        float flick = 0.85 + 0.15 * sin(uTime * 23.0)
+          + uHigh * 0.6 * sin(uTime * 61.0 + 1.7);
         vec3 col = mix(uColor, vec3(1.0, 0.95, 0.85), core);
+        col *= 1.0 + uHigh * 0.8;
         gl_FragColor = vec4(col * flick, clamp(core + halo, 0.0, 1.0));
       }
     `,
   });
   const eyes = new THREE.Points(g, eyeMat);
   eyes.frustumCulled = false;
-  mechGroup.add(eyes); // NOTE: no dispersal — eyes never disperse, per spec
+  headGroup.add(eyes); // NOTE: no dispersal — eyes never disperse, per spec
 }
 
 export function initRobot(scene) {
@@ -279,22 +315,61 @@ export function sampleSurfacePoint(out) {
 
 export function updateRobot(dt, audioState) {
   const t = audioState.time;
-  // TEMP mapping until the audio engine lands (step 8): heat slider drives
-  // disintegration so it can be tested now. Audio will drive this later.
-  const target = THREE.MathUtils.clamp(
-    1 - audioState.heat * 0.95 + Math.sin(t * 0.8) * 0.06, 0, 1);
-  coherence += (target - coherence) * Math.min(1, dt * 2.5);
+  const live = !!audioState.live;
+
+  // Smoothed bands follow the music without jitter.
+  const sk = Math.min(1, dt * 3);
+  subS += (audioState.sub - subS) * sk;
+  midS += (audioState.mid - midS) * sk;
+  highS += (audioState.high - highS) * sk;
+
+  // Coherence: a kick onset snaps the ghost together (fast attack), then it
+  // burns apart between beats. No source → idle breathing around half-formed.
+  const kickEdge = audioState.kick > 0.6 && prevKick <= 0.6;
+  prevKick = audioState.kick;
+  if (live) {
+    if (kickEdge) coherence = 1;
+    coherence = Math.max(0, coherence - dt * CONFIG.robot.coherenceDecay);
+  } else {
+    const idleTarget = 0.55 + Math.sin(t * 0.8) * 0.08;
+    coherence += (idleTarget - coherence) * Math.min(1, dt * 1.2);
+  }
 
   if (turntableOn) robotGroup.rotation.y += dt * CONFIG.robot.turntableSpeed;
-  mechGroup.rotation.z = Math.sin(t * 0.7) * 0.035;
-  mechGroup.rotation.x = Math.sin(t * 0.53) * 0.02;
+
+  // Slow sway: torso roll driven by smoothed mids.
+  const swayAmp = 0.02 + midS * CONFIG.robot.swayGain;
+  mechGroup.rotation.z = Math.sin(t * 0.9) * swayAmp;
+  mechGroup.rotation.x = Math.sin(t * 0.63 + 1.3) * swayAmp * 0.6;
+
+  // Arms swing gently with the mids.
+  const armSwing = 0.05 + midS * 0.22;
+  armL.rotation.x = Math.sin(t * 1.1) * armSwing;
+  armR.rotation.x = Math.sin(t * 1.1 + Math.PI) * armSwing;
+  armL.rotation.z = 0.06 + midS * 0.10;
+  armR.rotation.z = -0.06 - midS * 0.10;
+
+  // Head tilts toward the hottest band: sub = heavy nod, high = looks up.
+  const tiltZTarget = THREE.MathUtils.clamp((highS - subS) * 0.45, -0.35, 0.35);
+  const tiltXTarget = THREE.MathUtils.clamp(subS * 0.14 - highS * 0.12, -0.2, 0.25);
+  headTiltZ += (tiltZTarget - headTiltZ) * sk;
+  headTiltX += (tiltXTarget - headTiltX) * sk;
+  headGroup.rotation.z = headTiltZ;
+  headGroup.rotation.x = headTiltX;
+
+  // Idle breathing: subtle scale oscillation, stronger with no source.
+  const breathe = 1 + Math.sin(t * 1.4) * 0.012 * (live ? 0.4 : 1.0);
+  mechGroup.scale.setScalar(breathe);
   mechGroup.position.y = Math.sin(t * 0.9) * 0.1;
 
   for (const m of [pointsMat, wireMat]) {
     m.uniforms.uTime.value = t;
     m.uniforms.uCoherence.value = coherence;
     m.uniforms.uHeat.value = audioState.heat;
+    m.uniforms.uMid.value = midS;
   }
   eyeMat.uniforms.uTime.value = t;
-  fireLight.intensity = 2 + audioState.heat * 9 + audioState.pulse * 20;
+  eyeMat.uniforms.uHigh.value = highS;
+  fireLight.intensity = 2 + audioState.heat * 9 + audioState.pulse * 20
+    + audioState.kick * 8;
 }
